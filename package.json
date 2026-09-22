@@ -1,0 +1,30 @@
+{
+  "name": "stocklink-inventory-system",
+  "version": "1.0.0",
+  "description": "Advanced Database Systems course project.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "prisma skills sync || exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bayronearljames-source/stocklink-inventory-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bayronearljames-source/stocklink-inventory-system/issues"
+  },
+  "homepage": "https://github.com/bayronearljames-source/stocklink-inventory-system#readme",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prisma": "^5.22.0"
+  }
+}

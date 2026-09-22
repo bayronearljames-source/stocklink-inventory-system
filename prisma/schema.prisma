@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_logs {
+  log_id     Int      @id @default(autoincrement())
+  table_name String   @db.VarChar(50)
+  record_id  Int
+  action     String   @db.VarChar(20)
+  old_value  Json?
+  new_value  Json?
+  changed_by Int?
+  changed_at DateTime @default(now()) @db.Timestamp(6)
+  users      users?   @relation(fields: [changed_by], references: [user_id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model branch_stock {
+  branch_id         Int
+  item_id           Int
+  quantity          Int       @default(0)
+  reorder_threshold Int       @default(5)
+  last_restocked_at DateTime? @db.Timestamp(6)
+  branches          branches  @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
+  items             items     @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+
+  @@id([branch_id, item_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model branches {
+  branch_id        Int                @id @default(autoincrement())
+  branch_name      String             @db.VarChar(100)
+  location         String             @db.VarChar(200)
+  contact_phone    String?            @db.VarChar(30)
+  branch_stock     branch_stock[]
+  restock_requests restock_requests[]
+  stock_movements  stock_movements[]
+  users            users[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model central_stock {
+  warehouse_id      Int
+  item_id           Int
+  quantity          Int               @default(0)
+  items             items             @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+  central_warehouse central_warehouse @relation(fields: [warehouse_id], references: [warehouse_id], onUpdate: NoAction)
+
+  @@id([warehouse_id, item_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model central_warehouse {
+  warehouse_id   Int             @id @default(autoincrement())
+  warehouse_name String          @db.VarChar(100)
+  location       String          @db.VarChar(200)
+  central_stock  central_stock[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model items {
+  item_id          Int                @id @default(autoincrement())
+  item_name        String             @db.VarChar(150)
+  category         String             @db.VarChar(80)
+  unit_price       Decimal            @db.Decimal(10, 2)
+  unit_of_measure  String             @default("pcs") @db.VarChar(20)
+  branch_stock     branch_stock[]
+  central_stock    central_stock[]
+  restock_requests restock_requests[]
+  stock_movements  stock_movements[]
+  supplier_items   supplier_items[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model restock_requests {
+  request_id    Int       @id @default(autoincrement())
+  branch_id     Int
+  item_id       Int
+  requested_qty Int
+  status        String    @default("pending") @db.VarChar(20)
+  requested_at  DateTime  @default(now()) @db.Timestamp(6)
+  fulfilled_at  DateTime? @db.Timestamp(6)
+  approved_by   Int?
+  users         users?    @relation(fields: [approved_by], references: [user_id], onUpdate: NoAction)
+  branches      branches  @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
+  items         items     @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model stock_movements {
+  movement_id   Int      @id @default(autoincrement())
+  branch_id     Int
+  item_id       Int
+  moved_by      Int?
+  movement_type String   @db.VarChar(20)
+  quantity      Int
+  moved_at      DateTime @default(now()) @db.Timestamp(6)
+  branches      branches @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
+  items         items    @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+  users         users?   @relation(fields: [moved_by], references: [user_id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model supplier_items {
+  supplier_id    Int
+  item_id        Int
+  unit_cost      Decimal   @db.Decimal(10, 2)
+  lead_time_days Int
+  min_order_qty  Int       @default(1)
+  items          items     @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+  suppliers      suppliers @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([supplier_id, item_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model suppliers {
+  supplier_id    Int              @id @default(autoincrement())
+  supplier_name  String           @db.VarChar(150)
+  contact_info   String?          @db.VarChar(200)
+  supplier_items supplier_items[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  user_id          Int                @id @default(autoincrement())
+  username         String             @unique @db.VarChar(50)
+  password_hash    String             @db.VarChar(255)
+  role             String             @db.VarChar(20)
+  branch_id        Int?
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  audit_logs       audit_logs[]
+  restock_requests restock_requests[]
+  stock_movements  stock_movements[]
+  branches         branches?          @relation(fields: [branch_id], references: [branch_id], onDelete: Restrict, onUpdate: NoAction)
+}
