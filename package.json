@@ -21,6 +21,7 @@
   "homepage": "https://github.com/bayronearljames-source/stocklink-inventory-system#readme",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "cors": "^2.8.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
