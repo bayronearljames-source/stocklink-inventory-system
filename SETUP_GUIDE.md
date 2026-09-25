@@ -34,8 +34,10 @@ Add the following content (replace with the actual DATABASE_URL your teammate wi
 
 ```env
 # Database Connection (Supabase PostgreSQL)
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.xxxxx.supabase.co:6543/postgres?pgbouncer=true"
+DATABASE_URL="postgresql://stocklink_app.aidnjiqbykohexbvcmmk:YOUR_PASSWORD@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
 ```
+**Note:** We use Supabase's session pooler instead of the direct connection because
+the direct connection defaults to IPv6, which fails on networks that don't support it.
 
 **⚠️ IMPORTANT:** Get the actual `DATABASE_URL` from your teammate via Slack/Discord DM. Never commit `.env` files to Git.
 
