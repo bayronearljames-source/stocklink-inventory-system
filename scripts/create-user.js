@@ -16,7 +16,7 @@ const prisma = new PrismaClient();
   const user = await prisma.users.create({
     data: { username, password_hash, role, branch_id: branchId ? Number(branchId) : null },
   });
-  console.log('Created user', user.user_id, user.username, user.role);
+ console.log('Created user', user.user_id, user.username, user.role);
   await prisma.$disconnect();
 })().catch((e) => {
   console.error(e.message);
