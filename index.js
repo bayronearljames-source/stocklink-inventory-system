@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
-const { requireAuth } = require('./middleware/auth');   // ← ADD THIS LINE
+const { requireAuth, requireRole } = require('./middleware/auth');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/auth', require('./routes/auth'));        
+app.use('/api/auth', require('./routes/auth'));
 
 // Test route
 app.get('/', (req, res) => {
@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 // Get all items
-app.get('/api/items', requireAuth, async (req, res) => {  
+app.get('/api/items', requireAuth, async (req, res) => {
   try {
     const items = await prisma.items.findMany();
     res.json(items);
@@ -27,8 +27,8 @@ app.get('/api/items', requireAuth, async (req, res) => {
   }
 });
 
-// Create a new item
-app.post('/api/items', requireAuth, async (req, res) => { 
+// Create a new item (admin only)
+app.post('/api/items', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { item_name, category, unit_price, unit_of_measure } = req.body;
     const newItem = await prisma.items.create({
@@ -50,8 +50,8 @@ app.get('/api/branches', requireAuth, async (req, res) => {
   }
 });
 
-// Create a new branch
-app.post('/api/branches', requireAuth, async (req, res) => {
+// Create a new branch (admin only)
+app.post('/api/branches', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { branch_name, location, contact_phone } = req.body;
     const newBranch = await prisma.branches.create({
@@ -73,8 +73,8 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
   }
 });
 
-// Create a new supplier
-app.post('/api/suppliers', requireAuth, async (req, res) => {
+// Create a new supplier (admin only)
+app.post('/api/suppliers', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { supplier_name, contact_info } = req.body;
     const newSupplier = await prisma.suppliers.create({
@@ -86,10 +86,12 @@ app.post('/api/suppliers', requireAuth, async (req, res) => {
   }
 });
 
-// Get all branch stock (with branch and item details attached)
+// Get branch stock — admin sees all branches, everyone else sees only their own
 app.get('/api/branch-stock', requireAuth, async (req, res) => {
   try {
+    const where = req.user.role === 'admin' ? {} : { branch_id: req.user.branch_id };
     const stock = await prisma.branch_stock.findMany({
+      where,
       include: { branches: true, items: true },
     });
     res.json(stock);
@@ -98,13 +100,19 @@ app.get('/api/branch-stock', requireAuth, async (req, res) => {
   }
 });
 
-// Create/set stock for an item at a branch
-app.post('/api/branch-stock', requireAuth, async (req, res) => {
+// Create/set stock for an item at a branch (admin, or a manager for their own branch)
+app.post('/api/branch-stock', requireAuth, requireRole('admin', 'branch_manager'), async (req, res) => {
   try {
     const { branch_id, item_id, quantity, reorder_threshold } = req.body;
+    const targetBranchId = Number(branch_id);
+
+    if (req.user.role === 'branch_manager' && targetBranchId !== req.user.branch_id) {
+      return res.status(403).json({ error: 'Cannot modify stock for another branch' });
+    }
+
     const newStock = await prisma.branch_stock.create({
       data: {
-        branch_id: Number(branch_id),
+        branch_id: targetBranchId,
         item_id: Number(item_id),
         quantity: quantity !== undefined ? Number(quantity) : undefined,
         reorder_threshold: reorder_threshold !== undefined ? Number(reorder_threshold) : undefined,
