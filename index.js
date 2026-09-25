@@ -124,6 +124,78 @@ app.post('/api/branch-stock', requireAuth, requireRole('admin', 'branch_manager'
   }
 });
 
+// Get restock requests — admin sees all, everyone else sees only their branch
+app.get('/api/restock-requests', requireAuth, async (req, res) => {
+  try {
+    const where = req.user.role === 'admin' ? {} : { branch_id: req.user.branch_id };
+    const requests = await prisma.restock_requests.findMany({
+      where,
+      include: { branches: true, items: true },
+      orderBy: { requested_at: 'desc' },
+    });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a restock request — for the logged-in user's own branch
+app.post('/api/restock-requests', requireAuth, requireRole('clerk', 'branch_manager', 'admin'), async (req, res) => {
+  try {
+    const { item_id, requested_qty } = req.body;
+
+    if (req.user.role !== 'admin' && !req.user.branch_id) {
+      return res.status(400).json({ error: 'User has no branch assigned' });
+    }
+
+    const newRequest = await prisma.restock_requests.create({
+      data: {
+        branch_id: req.user.branch_id, // taken from token, not the request body
+        item_id: Number(item_id),
+        requested_qty: Number(requested_qty),
+      },
+    });
+    res.status(201).json(newRequest);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fulfill a restock request — deducts central stock, adds to branch stock, marks request fulfilled
+app.post('/api/restock-requests/:id/fulfill', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const requestId = Number(req.params.id);
+    const warehouseId = Number(req.body.warehouse_id);
+
+    if (!warehouseId) {
+      return res.status(400).json({ error: 'warehouse_id is required' });
+    }
+
+    await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer)`;
+
+    // The procedure doesn't record who approved it — set that here
+    await prisma.restock_requests.update({
+      where: { request_id: requestId },
+      data: { approved_by: req.user.id },
+    });
+
+    const updated = await prisma.restock_requests.findUnique({
+      where: { request_id: requestId },
+      include: { branches: true, items: true },
+    });
+    res.json(updated);
+  } catch (error) {
+    const msg = error.message || '';
+    if (msg.includes('not found or already processed')) {
+      return res.status(404).json({ error: 'Request not found or already processed' });
+    }
+    if (msg.includes('Insufficient central stock')) {
+      return res.status(400).json({ error: 'Insufficient central stock for this item' });
+    }
+    res.status(500).json({ error: msg });
+  }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
