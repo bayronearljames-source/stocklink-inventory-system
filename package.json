@@ -4,6 +4,8 @@
   "description": "Advanced Database Systems course project.",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon index.js",
+    "client": "cd client && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma skills sync || exit 0"
   },
@@ -21,6 +23,7 @@
   "homepage": "https://github.com/bayronearljames-source/stocklink-inventory-system#readme",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "cors": "^2.8.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
