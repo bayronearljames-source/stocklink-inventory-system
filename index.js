@@ -142,7 +142,7 @@ app.post(
               : undefined,
         },
       });
-      res.status(201).json(newStock);
+      res.json(requests);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
