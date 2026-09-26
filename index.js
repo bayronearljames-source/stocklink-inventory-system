@@ -206,9 +206,8 @@ app.post(
         return res.status(400).json({ error: "warehouse_id is required" });
       }
 
-      await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer)`;
-
-      // The procedure doesn't record who approved it — set that here
+await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer, ${req.user.id}::integer)`;      
+// The procedure doesn't record who approved it — set that here
       await prisma.restock_requests.update({
         where: { request_id: requestId },
         data: { approved_by: req.user.id },
@@ -235,6 +234,36 @@ app.post(
     }
   },
 );
+
+app.post('/api/restock-requests/:id/reject', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const requestId = Number(req.params.id);
+
+    const request = await prisma.restock_requests.findUnique({
+      where: { request_id: requestId },
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: 'Request already processed' });
+    }
+
+    const updated = await prisma.restock_requests.update({
+      where: { request_id: requestId },
+      data: {
+        status: 'rejected',
+        approved_by: req.user.id,
+      },
+      include: { branches: true, items: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 const PORT = 3000;
 app.listen(PORT, () => {
