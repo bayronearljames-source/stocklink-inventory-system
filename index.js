@@ -142,7 +142,7 @@ app.post(
               : undefined,
         },
       });
-      res.json(requests);
+      res.status(201).json(newStock);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -206,12 +206,7 @@ app.post(
         return res.status(400).json({ error: "warehouse_id is required" });
       }
 
-await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer, ${req.user.id}::integer)`;      
-// The procedure doesn't record who approved it — set that here
-      await prisma.restock_requests.update({
-        where: { request_id: requestId },
-        data: { approved_by: req.user.id },
-      });
+      await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer, ${req.user.id}::integer)`;
 
       const updated = await prisma.restock_requests.findUnique({
         where: { request_id: requestId },
@@ -264,6 +259,109 @@ app.post('/api/restock-requests/:id/reject', requireAuth, requireRole('admin'), 
     res.status(500).json({ error: error.message });
   }
 });
+
+// ─── Stock Movements ────────────────────────────────────────────────────────
+
+// Get stock movements — admin sees all branches, others see only their own
+app.get('/api/stock-movements', requireAuth, async (req, res) => {
+  try {
+    const where =
+      req.user.role === 'admin' ? {} : { branch_id: req.user.branch_id };
+    const movements = await prisma.stock_movements.findMany({
+      where,
+      include: { branches: true, items: true, users: true },
+      orderBy: { moved_at: 'desc' },
+    });
+    res.json(movements);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Log a stock movement (sale / withdrawal / adjustment)
+// This UPDATE to branch_stock.quantity fires both PostgreSQL triggers:
+//   1. trg_branch_stock_low  → auto-inserts a restock_request if qty < threshold
+//   2. trg_audit_branch_stock → writes the before/after snapshot to audit_logs
+app.post(
+  '/api/stock-movements',
+  requireAuth,
+  requireRole('clerk', 'branch_manager', 'admin'),
+  async (req, res) => {
+    try {
+      const { item_id, movement_type, quantity } = req.body;
+
+      const VALID_TYPES = ['sale', 'withdrawal', 'adjustment'];
+      if (!VALID_TYPES.includes(movement_type)) {
+        return res.status(400).json({
+          error: `movement_type must be one of: ${VALID_TYPES.join(', ')}`,
+        });
+      }
+      if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
+        return res.status(400).json({ error: 'quantity must be a positive integer' });
+      }
+
+      const branchId = req.user.branch_id;
+      if (!branchId) {
+        return res.status(400).json({ error: 'User has no branch assigned' });
+      }
+
+      const itemId = Number(item_id);
+      const qty = Number(quantity);
+
+      // Run inside a transaction so the movement record and stock decrement are atomic
+      const [movement] = await prisma.$transaction([
+        // 1. Record the movement
+        prisma.stock_movements.create({
+          data: {
+            branch_id: branchId,
+            item_id: itemId,
+            moved_by: req.user.id,
+            movement_type,
+            quantity: qty,
+          },
+        }),
+        // 2. Decrement branch_stock — this fires both DB triggers
+        prisma.branch_stock.update({
+          where: { branch_id_item_id: { branch_id: branchId, item_id: itemId } },
+          data: { quantity: { decrement: qty } },
+        }),
+      ]);
+
+      res.status(201).json(movement);
+    } catch (error) {
+      const msg = error.message || '';
+      // Prisma throws P2025 when the branch_stock row doesn't exist yet
+      if (msg.includes('P2025') || msg.includes('Record to update not found')) {
+        return res.status(404).json({
+          error: 'No stock record found for this item at your branch. Add branch stock first.',
+        });
+      }
+      // Postgres CHECK constraint: quantity >= 0
+      if (msg.includes('branch_stock_quantity_check')) {
+        return res.status(400).json({ error: 'Insufficient stock — quantity cannot go below 0' });
+      }
+      res.status(500).json({ error: msg });
+    }
+  }
+);
+
+// ─── Audit Logs ─────────────────────────────────────────────────────────────
+
+// Get audit logs — admin only (trigger-generated, no application writes)
+app.get('/api/audit-logs', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const logs = await prisma.audit_logs.findMany({
+      include: { users: true },
+      orderBy: { changed_at: 'desc' },
+      take: 200, // safety cap — add pagination later if needed
+    });
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── Server ──────────────────────────────────────────────────────────────────
 
 const PORT = 3000;
 app.listen(PORT, () => {
