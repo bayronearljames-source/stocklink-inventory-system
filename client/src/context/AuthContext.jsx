@@ -1,21 +1,26 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { STORAGE_KEYS, MOCK_USERS, ROLES } from '../utils/constants';
+import { STORAGE_KEYS } from '../utils/constants';
 
 const AuthContext = createContext(null);
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-      return savedUser ? JSON.parse(savedUser) : MOCK_USERS.admin; // Default to Admin for easy preview
+      return savedUser ? JSON.parse(savedUser) : null; // no more "default to Admin" — you're logged out until a real login succeeds
     } catch {
-      return MOCK_USERS.admin;
+      return null;
     }
   });
 
   const [token, setToken] = useState(() => {
-    return localStorage.getItem(STORAGE_KEYS.TOKEN) || 'mock-jwt-token-stocklink';
+    return localStorage.getItem(STORAGE_KEYS.TOKEN) || null;
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -33,18 +38,34 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Login handler
-  const login = (roleKeyOrUserData) => {
-    let targetUser;
-    if (typeof roleKeyOrUserData === 'string') {
-      targetUser = MOCK_USERS[roleKeyOrUserData] || MOCK_USERS.admin;
-    } else {
-      targetUser = roleKeyOrUserData;
+  // Login handler — now hits the real backend instead of picking from MOCK_USERS
+  const login = async (username, password) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // routes/auth.js sends { error: "..." } on 400/401/500
+        throw new Error(data.error || 'Login failed');
+      }
+
+      // data = { token, user: { id, role, branch_id, username } }
+      setUser(data.user);
+      setToken(data.token);
+      return data.user;
+    } catch (err) {
+      setError(err.message);
+      throw err; // let the login form catch this and show it
+    } finally {
+      setIsLoading(false);
     }
-    const mockToken = `mock-jwt-${targetUser.role}-${Date.now()}`;
-    setUser(targetUser);
-    setToken(mockToken);
-    return targetUser;
   };
 
   // Logout handler
@@ -61,22 +82,16 @@ export const AuthProvider = ({ children }) => {
     return allowedRoles.includes(user.role);
   };
 
-  // Switch role quickly (convenient for defense demos)
-  const switchRole = (roleKey) => {
-    if (MOCK_USERS[roleKey]) {
-      return login(roleKey);
-    }
-  };
-
   const value = {
     user,
     token,
     isAuthenticated: !!user && !!token,
     role: user?.role || null,
+    isLoading,
+    error,
     login,
     logout,
     hasRole,
-    switchRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

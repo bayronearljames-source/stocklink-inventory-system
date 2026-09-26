@@ -1,32 +1,95 @@
-import { useAuth } from '../../context/AuthContext';
-import PageHeader from '../../components/common/PageHeader';
-import Card from '../../components/common/Card';
-import { Boxes, ClipboardList, ArrowLeftRight, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import PageHeader from "../../components/common/PageHeader";
+import Card from "../../components/common/Card";
+import { apiClient } from "../../api/client";
+import {
+  Boxes,
+  AlertTriangle,
+  ClipboardList,
+  CheckCircle2,
+  ArrowRight,
+  Clock,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+
+// ─── Manager Dashboard ────────────────────────────────────────────────────────
+// Layout: 3-col KPI row (branch-scoped) → side-by-side critical stock table + restock status list
+// Distinct from Admin (4-col KPIs, system-wide) and Clerk (form-first, no stock overview)
 
 export const ManagerDashboard = () => {
   const { user } = useAuth();
+
+  const [stockRows, setStockRows] = useState([]);
+  const [restockRequests, setRestockRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboard() {
+      setIsLoading(true);
+      try {
+        // Both endpoints are already server-scoped to this manager's branch_id via JWT.
+        // We do NOT filter on the frontend — we trust what comes back.
+        const [stockRes, requestsRes] = await Promise.allSettled([
+          apiClient.get("/branch-stock"),
+          apiClient.get("/restock-requests"),
+        ]);
+
+        if (!isMounted) return;
+
+        if (stockRes.status === "fulfilled") setStockRows(stockRes.value);
+        if (requestsRes.status === "fulfilled")
+          setRestockRequests(requestsRes.value);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Derived KPIs — computed from real data
+  const totalItems = stockRows.length;
+  const lowStockItems = stockRows.filter(
+    (r) => r.quantity < r.reorder_threshold,
+  );
+  const pendingRestocks = restockRequests.filter(
+    (r) => r.status === "pending",
+  ).length;
+
+  const kpi = (val) => (isLoading ? "—" : val);
 
   return (
     <div>
       <PageHeader
         title="Branch Manager Dashboard"
-        description="Scoped view for your assigned branch: live shelf stock, restock request status, and delivery confirmations."
+        description="Live stock levels and restock status for your branch. Data is automatically scoped by the server to your assigned branch."
         badge={
           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
-            {user?.branchName || 'Branch Manager'}
+            Branch Manager
           </span>
         }
       />
 
-      {/* KPI Stats Grid */}
+      {/* ── KPI Row: 3 cards — branch-scoped metrics only ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
         <Card className="border-l-4 border-l-blue-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Branch Stocked Items</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">42</h3>
-              <p className="text-[11px] text-slate-500 mt-1">Managed at this location</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Branch Stock Lines
+              </p>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">
+                {kpi(totalItems)}
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Items tracked at this branch
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Boxes className="w-6 h-6" />
@@ -37,9 +100,17 @@ export const ManagerDashboard = () => {
         <Card className="border-l-4 border-l-rose-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Low Stock Warnings</p>
-              <h3 className="text-2xl font-bold text-rose-600 mt-1">3 Items</h3>
-              <p className="text-[11px] text-rose-700 font-medium mt-1">Below reorder threshold</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Low Stock Warnings
+              </p>
+              <h3
+                className={`text-2xl font-bold mt-1 ${lowStockItems.length > 0 ? "text-rose-600" : "text-slate-900"}`}
+              >
+                {kpi(lowStockItems.length)}
+              </h3>
+              <p className="text-[11px] text-rose-700 font-medium mt-1">
+                Below reorder threshold
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6" />
@@ -47,104 +118,151 @@ export const ManagerDashboard = () => {
           </div>
         </Card>
 
-        <Card className="border-l-4 border-l-emerald-500">
+        <Card className="border-l-4 border-l-amber-500">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Transactions</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">18</h3>
-              <p className="text-[11px] text-slate-500 mt-1">Logged by branch staff</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Pending Restocks
+              </p>
+              <h3
+                className={`text-2xl font-bold mt-1 ${pendingRestocks > 0 ? "text-amber-600" : "text-slate-900"}`}
+              >
+                {kpi(pendingRestocks)}
+              </h3>
+              <p className="text-[11px] text-amber-700 font-medium mt-1">
+                Awaiting admin approval
+              </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ArrowLeftRight className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <ClipboardList className="w-6 h-6" />
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Main Grid */}
+      {/* ── Main Grid: Critical stock table + Restock status list ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Branch Critical Stock Table */}
+        {/* Critical Low Stock — items below threshold from real branch-stock data */}
         <Card
           title="Critical Low Stock Items"
-          subtitle="Auto-request generated and sent to central warehouse"
+          subtitle="PostgreSQL trigger auto-creates a restock request when any item drops below its threshold"
           action={
-            <Link to="/stock" className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+            <Link
+              to="/stock"
+              className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+            >
               View All Stock <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           }
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
-                  <th className="pb-3">Item Name</th>
-                  <th className="pb-3">Current Qty</th>
-                  <th className="pb-3">Threshold</th>
-                  <th className="pb-3">Restock Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                <tr>
-                  <td className="py-3 font-medium">Bosch Hammer Drill 13mm</td>
-                  <td className="py-3 font-bold text-rose-600">2 units</td>
-                  <td className="py-3 text-slate-500">5 units</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                      Pending Admin Review
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium">Stanley Measuring Tape 8m</td>
-                  <td className="py-3 font-bold text-rose-600">4 units</td>
-                  <td className="py-3 text-slate-500">10 units</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                      In Transit from HQ
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium">WD-40 Specialist Spray 400ml</td>
-                  <td className="py-3 font-bold text-rose-600">3 units</td>
-                  <td className="py-3 text-slate-500">8 units</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                      Auto-Queued
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {isLoading && (
+            <div className="py-6 text-center text-sm text-slate-400">
+              Loading…
+            </div>
+          )}
+          {!isLoading && lowStockItems.length === 0 && (
+            <div className="py-6 text-center text-sm text-emerald-600 font-medium">
+              ✓ All items are above their reorder threshold.
+            </div>
+          )}
+          {!isLoading && lowStockItems.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
+                    <th className="pb-3">Item</th>
+                    <th className="pb-3 text-right">Qty</th>
+                    <th className="pb-3 text-right">Threshold</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {lowStockItems.map((row) => (
+                    <tr key={row.stock_id} className="bg-rose-50/30">
+                      <td className="py-3 font-medium">
+                        {row.items?.item_name ?? `Item #${row.item_id}`}
+                      </td>
+                      <td className="py-3 text-right font-bold text-rose-600">
+                        {row.quantity}
+                      </td>
+                      <td className="py-3 text-right text-slate-500">
+                        {row.reorder_threshold}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
-        {/* Incoming Deliveries & Confirmation */}
+        {/* Restock Request Status — live status list for this branch */}
         <Card
-          title="Incoming Restock Deliveries"
-          subtitle="Confirm delivery receipt to execute atomic stock update via stored procedure"
+          title="Restock Request Status"
+          subtitle="Requests submitted for your branch and their current admin review status"
+          action={
+            <Link
+              to="/restock-requests"
+              className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1"
+            >
+              View All <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          }
         >
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-slate-900 text-sm">Delivery #DEL-9041 (Stanley Tape 8m)</div>
-                <div className="text-xs text-slate-500 mt-0.5">Dispatched from Central Warehouse • Qty: 25</div>
-              </div>
-              <button className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm">
-                Confirm Receipt
-              </button>
+          {isLoading && (
+            <div className="py-6 text-center text-sm text-slate-400">
+              Loading…
             </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-slate-900 text-sm">Delivery #DEL-9038 (Makita Cut-Off Disc)</div>
-                <div className="text-xs text-slate-500 mt-0.5">Dispatched from Central Warehouse • Qty: 50</div>
-              </div>
-              <span className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-100 rounded-lg">
-                Received & Updated
-              </span>
+          )}
+          {!isLoading && restockRequests.length === 0 && (
+            <div className="py-6 text-center text-sm text-slate-500">
+              No restock requests for your branch yet.
             </div>
-          </div>
+          )}
+          {!isLoading && restockRequests.length > 0 && (
+            <div className="space-y-3">
+              {restockRequests.slice(0, 4).map((req) => (
+                <div
+                  key={req.request_id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {req.items?.item_name ?? `Item #${req.item_id}`}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(req.requested_at).toLocaleDateString("en-PH", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                      {" · "}
+                      {req.requested_qty} units requested
+                    </div>
+                  </div>
+                  {/* Status badge — colour-coded to match real status values */}
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                      req.status === "fulfilled"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : req.status === "rejected"
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                </div>
+              ))}
+              {restockRequests.length > 4 && (
+                <Link
+                  to="/restock-requests"
+                  className="block text-center text-xs font-semibold text-blue-600 hover:underline pt-1"
+                >
+                  +{restockRequests.length - 4} more requests →
+                </Link>
+              )}
+            </div>
+          )}
         </Card>
       </div>
     </div>
