@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useEffect } from "react";
+import { X } from "lucide-react";
 
 // A simple modal overlay used by the three admin Create forms.
 // Props:
@@ -13,11 +13,11 @@ export const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return;
 
     const handleKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
 
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose]);
 
   // Nothing in the DOM when closed — no hidden element, no layout shift
