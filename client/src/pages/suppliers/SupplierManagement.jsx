@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import PageHeader from '../../components/common/PageHeader';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import { apiClient } from '../../api/client';
-import { Truck, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import PageHeader from "../../components/common/PageHeader";
+import Card from "../../components/common/Card";
+import Button from "../../components/common/Button";
+import Modal from "../../components/common/Modal";
+import { apiClient } from "../../api/client";
+import { Truck, Plus } from "lucide-react";
 
 export const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -16,8 +16,8 @@ export const SupplierManagement = () => {
 
   // Form fields — match exactly what POST /api/suppliers destructures:
   // { supplier_name, contact_info }
-  const [supplierName, setSupplierName] = useState('');
-  const [contactInfo, setContactInfo] = useState('');
+  const [supplierName, setSupplierName] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
 
   // Submission state
   const [isSaving, setIsSaving] = useState(false);
@@ -29,7 +29,7 @@ export const SupplierManagement = () => {
     setError(null);
     try {
       // GET /api/suppliers — returns { supplier_id, supplier_name, contact_info }
-      const data = await apiClient.get('/suppliers');
+      const data = await apiClient.get("/suppliers");
       if (isMounted) setSuppliers(data);
     } catch (err) {
       if (isMounted) setError(err.message);
@@ -41,12 +41,14 @@ export const SupplierManagement = () => {
   useEffect(() => {
     let isMounted = true;
     loadSuppliers(isMounted);
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [loadSuppliers]);
 
   const openModal = () => {
-    setSupplierName('');
-    setContactInfo('');
+    setSupplierName("");
+    setContactInfo("");
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -61,7 +63,7 @@ export const SupplierManagement = () => {
 
     // supplier_name is the only required field — contact_info is optional
     if (!supplierName.trim()) {
-      setFormError('Supplier name is required.');
+      setFormError("Supplier name is required.");
       return;
     }
 
@@ -70,7 +72,7 @@ export const SupplierManagement = () => {
 
     try {
       // POST /api/suppliers — body: { supplier_name, contact_info }
-      await apiClient.post('/suppliers', {
+      await apiClient.post("/suppliers", {
         supplier_name: supplierName.trim(),
         contact_info: contactInfo.trim() || null,
       });
@@ -103,7 +105,9 @@ export const SupplierManagement = () => {
       />
 
       {isLoading && (
-        <div className="py-16 text-center text-sm text-slate-500">Loading suppliers…</div>
+        <div className="py-16 text-center text-sm text-slate-500">
+          Loading suppliers…
+        </div>
       )}
 
       {!isLoading && error && (
@@ -121,9 +125,11 @@ export const SupplierManagement = () => {
       {!isLoading && !error && suppliers.length > 0 && (
         <>
           <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-            <strong>Note:</strong> Showing supplier master records only. Per-item cost, lead time, and
-            minimum order quantity live in the <code>supplier_items</code> junction table — a{' '}
-            <code>/api/supplier-items</code> route is needed from the backend team.
+            <strong>Note:</strong> Showing supplier master records only.
+            Per-item cost, lead time, and minimum order quantity live in the{" "}
+            <code>supplier_items</code> junction table — a{" "}
+            <code>/api/supplier-items</code> route is needed from the backend
+            team.
           </div>
 
           <Card>
@@ -148,7 +154,9 @@ export const SupplierManagement = () => {
                       </td>
                       <td className="py-3 px-3 text-xs text-slate-500">
                         {supplier.contact_info || (
-                          <span className="italic text-slate-400">No contact on file</span>
+                          <span className="italic text-slate-400">
+                            No contact on file
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -161,9 +169,12 @@ export const SupplierManagement = () => {
       )}
 
       {/* ── Add Supplier Modal ── */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Add Supplier Record">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title="Add Supplier Record"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {formError}
@@ -187,7 +198,9 @@ export const SupplierManagement = () => {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Contact Info
-              <span className="ml-1 text-slate-400 font-normal">(optional — email, phone, or both)</span>
+              <span className="ml-1 text-slate-400 font-normal">
+                (optional — email, phone, or both)
+              </span>
             </label>
             <input
               type="text"
@@ -199,11 +212,16 @@ export const SupplierManagement = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={closeModal} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closeModal}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Add Supplier'}
+              {isSaving ? "Saving…" : "Add Supplier"}
             </Button>
           </div>
         </form>

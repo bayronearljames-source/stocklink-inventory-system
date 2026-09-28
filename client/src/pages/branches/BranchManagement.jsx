@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import PageHeader from '../../components/common/PageHeader';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import { apiClient } from '../../api/client';
-import { Building2, Plus, MapPin, Phone } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import PageHeader from "../../components/common/PageHeader";
+import Card from "../../components/common/Card";
+import Button from "../../components/common/Button";
+import Modal from "../../components/common/Modal";
+import { apiClient } from "../../api/client";
+import { Building2, Plus, MapPin, Phone } from "lucide-react";
 
 export const BranchManagement = () => {
   const [branches, setBranches] = useState([]);
@@ -16,9 +16,9 @@ export const BranchManagement = () => {
 
   // Form fields — match exactly what POST /api/branches destructures:
   // { branch_name, location, contact_phone }
-  const [branchName, setBranchName] = useState('');
-  const [location, setLocation] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
+  const [branchName, setBranchName] = useState("");
+  const [location, setLocation] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
 
   // Submission state
   const [isSaving, setIsSaving] = useState(false);
@@ -30,7 +30,7 @@ export const BranchManagement = () => {
     setError(null);
     try {
       // GET /api/branches — returns { branch_id, branch_name, location, contact_phone }
-      const data = await apiClient.get('/branches');
+      const data = await apiClient.get("/branches");
       if (isMounted) setBranches(data);
     } catch (err) {
       if (isMounted) setError(err.message);
@@ -42,13 +42,15 @@ export const BranchManagement = () => {
   useEffect(() => {
     let isMounted = true;
     loadBranches(isMounted);
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [loadBranches]);
 
   const openModal = () => {
-    setBranchName('');
-    setLocation('');
-    setContactPhone('');
+    setBranchName("");
+    setLocation("");
+    setContactPhone("");
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -63,7 +65,7 @@ export const BranchManagement = () => {
 
     // branch_name is the only required field — location and contact_phone are optional
     if (!branchName.trim()) {
-      setFormError('Branch name is required.');
+      setFormError("Branch name is required.");
       return;
     }
 
@@ -73,7 +75,7 @@ export const BranchManagement = () => {
     try {
       // POST /api/branches — body: { branch_name, location, contact_phone }
       // contact_phone is optional so we include it even if empty — Prisma accepts null
-      await apiClient.post('/branches', {
+      await apiClient.post("/branches", {
         branch_name: branchName.trim(),
         location: location.trim() || null,
         contact_phone: contactPhone.trim() || null,
@@ -107,7 +109,9 @@ export const BranchManagement = () => {
       />
 
       {isLoading && (
-        <div className="py-16 text-center text-sm text-slate-500">Loading branches…</div>
+        <div className="py-16 text-center text-sm text-slate-500">
+          Loading branches…
+        </div>
       )}
 
       {!isLoading && error && (
@@ -125,7 +129,10 @@ export const BranchManagement = () => {
       {!isLoading && !error && branches.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {branches.map((branch) => (
-            <Card key={branch.branch_id} className="hover:border-slate-300 transition-colors">
+            <Card
+              key={branch.branch_id}
+              className="hover:border-slate-300 transition-colors"
+            >
               <div className="flex items-start justify-between">
                 <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                   <Building2 className="w-5 h-5" />
@@ -135,8 +142,12 @@ export const BranchManagement = () => {
                 </span>
               </div>
 
-              <h3 className="font-bold text-slate-900 text-base mt-3">{branch.branch_name}</h3>
-              <p className="text-xs font-mono text-purple-700 mt-0.5">ID: {branch.branch_id}</p>
+              <h3 className="font-bold text-slate-900 text-base mt-3">
+                {branch.branch_name}
+              </h3>
+              <p className="text-xs font-mono text-purple-700 mt-0.5">
+                ID: {branch.branch_id}
+              </p>
 
               <div className="mt-4 pt-4 border-t border-slate-100 space-y-2 text-xs text-slate-600">
                 {branch.location && (
@@ -152,7 +163,9 @@ export const BranchManagement = () => {
                   </div>
                 )}
                 {!branch.location && !branch.contact_phone && (
-                  <span className="text-slate-400 italic">No contact info on record</span>
+                  <span className="text-slate-400 italic">
+                    No contact info on record
+                  </span>
                 )}
               </div>
             </Card>
@@ -161,9 +174,12 @@ export const BranchManagement = () => {
       )}
 
       {/* ── Register New Branch Modal ── */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Register New Branch">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title="Register New Branch"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {formError}
@@ -187,7 +203,9 @@ export const BranchManagement = () => {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Location / Address
-              <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              <span className="ml-1 text-slate-400 font-normal">
+                (optional)
+              </span>
             </label>
             <input
               type="text"
@@ -201,7 +219,9 @@ export const BranchManagement = () => {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Contact Phone
-              <span className="ml-1 text-slate-400 font-normal">(optional)</span>
+              <span className="ml-1 text-slate-400 font-normal">
+                (optional)
+              </span>
             </label>
             <input
               type="text"
@@ -213,11 +233,16 @@ export const BranchManagement = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={closeModal} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closeModal}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Register Branch'}
+              {isSaving ? "Saving…" : "Register Branch"}
             </Button>
           </div>
         </form>
