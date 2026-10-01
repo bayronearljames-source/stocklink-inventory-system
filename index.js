@@ -41,6 +41,45 @@ app.post("/api/items", requireAuth, requireRole("admin"), async (req, res) => {
   }
 });
 
+// Update an item (admin only)
+app.put("/api/items/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const itemId = Number(req.params.id);
+    const { item_name, category, unit_price, unit_of_measure } = req.body;
+
+    const updatedItem = await prisma.items.update({
+      where: { item_id: itemId },
+      data: { item_name, category, unit_price, unit_of_measure },
+    });
+    res.json(updatedItem);
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete an item (admin only)
+app.delete("/api/items/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const itemId = Number(req.params.id);
+    await prisma.items.delete({
+      where: { item_id: itemId },
+    });
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    // Foreign key constraint violation
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'Cannot delete item: it is referenced by branch stock, restock requests, or stock movements' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all branches
 app.get("/api/branches", requireAuth, async (req, res) => {
   try {
@@ -69,6 +108,54 @@ app.post(
   },
 );
 
+// Update a branch (admin only)
+app.put(
+  "/api/branches/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const branchId = Number(req.params.id);
+      const { branch_name, location, contact_phone } = req.body;
+
+      const updatedBranch = await prisma.branches.update({
+        where: { branch_id: branchId },
+        data: { branch_name, location, contact_phone },
+      });
+      res.json(updatedBranch);
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Branch not found' });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Delete a branch (admin only)
+app.delete(
+  "/api/branches/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const branchId = Number(req.params.id);
+      await prisma.branches.delete({
+        where: { branch_id: branchId },
+      });
+      res.json({ message: 'Branch deleted successfully' });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Branch not found' });
+      }
+      if (error.code === 'P2003') {
+        return res.status(400).json({ error: 'Cannot delete branch: it has associated stock, users, or requests' });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
 // Get all suppliers
 app.get("/api/suppliers", requireAuth, async (req, res) => {
   try {
@@ -92,6 +179,54 @@ app.post(
       });
       res.status(201).json(newSupplier);
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Update a supplier (admin only)
+app.put(
+  "/api/suppliers/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const supplierId = Number(req.params.id);
+      const { supplier_name, contact_info } = req.body;
+
+      const updatedSupplier = await prisma.suppliers.update({
+        where: { supplier_id: supplierId },
+        data: { supplier_name, contact_info },
+      });
+      res.json(updatedSupplier);
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Delete a supplier (admin only)
+app.delete(
+  "/api/suppliers/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const supplierId = Number(req.params.id);
+      await prisma.suppliers.delete({
+        where: { supplier_id: supplierId },
+      });
+      res.json({ message: 'Supplier deleted successfully' });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+      if (error.code === 'P2003') {
+        return res.status(400).json({ error: 'Cannot delete supplier: it has associated items' });
+      }
       res.status(500).json({ error: error.message });
     }
   },
@@ -144,6 +279,79 @@ app.post(
       });
       res.status(201).json(newStock);
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Update branch stock (reorder_threshold or quantity) - admin or branch manager for their branch
+app.put(
+  "/api/branch-stock/:branch_id/:item_id",
+  requireAuth,
+  requireRole("admin", "branch_manager"),
+  async (req, res) => {
+    try {
+      const branchId = Number(req.params.branch_id);
+      const itemId = Number(req.params.item_id);
+      const { quantity, reorder_threshold } = req.body;
+
+      if (
+        req.user.role === "branch_manager" &&
+        branchId !== req.user.branch_id
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Cannot modify stock for another branch" });
+      }
+
+      const updatedStock = await prisma.branch_stock.update({
+        where: {
+          branch_id_item_id: {
+            branch_id: branchId,
+            item_id: itemId,
+          },
+        },
+        data: {
+          quantity: quantity !== undefined ? Number(quantity) : undefined,
+          reorder_threshold:
+            reorder_threshold !== undefined
+              ? Number(reorder_threshold)
+              : undefined,
+        },
+      });
+      res.json(updatedStock);
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Branch stock record not found' });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Delete branch stock record (admin only)
+app.delete(
+  "/api/branch-stock/:branch_id/:item_id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const branchId = Number(req.params.branch_id);
+      const itemId = Number(req.params.item_id);
+
+      await prisma.branch_stock.delete({
+        where: {
+          branch_id_item_id: {
+            branch_id: branchId,
+            item_id: itemId,
+          },
+        },
+      });
+      res.json({ message: 'Branch stock record deleted successfully' });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Branch stock record not found' });
+      }
       res.status(500).json({ error: error.message });
     }
   },

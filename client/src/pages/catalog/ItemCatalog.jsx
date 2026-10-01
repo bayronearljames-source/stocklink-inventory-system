@@ -4,7 +4,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
 import { apiClient } from "../../api/client";
-import { Package, Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter } from "lucide-react";
 
 export const ItemCatalog = () => {
   const [items, setItems] = useState([]);
@@ -13,9 +13,9 @@ export const ItemCatalog = () => {
 
   // Modal open/close state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null); // null = create mode, object = edit mode
 
-  // Controlled form fields — one piece of state per field so the instructor
-  // can follow exactly which value goes into which POST body key
+  // Controlled form fields
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
@@ -25,8 +25,6 @@ export const ItemCatalog = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
-  // useCallback so loadItems can be called both on mount (via useEffect)
-  // and after a successful create, without being re-created on every render
   const loadItems = useCallback(async (isMounted) => {
     setIsLoading(true);
     setError(null);
@@ -38,7 +36,7 @@ export const ItemCatalog = () => {
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []); // no dependencies — apiClient is module-level, never changes
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -48,8 +46,8 @@ export const ItemCatalog = () => {
     };
   }, [loadItems]);
 
-  // Reset form fields and error back to defaults when the modal opens
   const openModal = () => {
+    setEditingItem(null);
     setItemName("");
     setCategory("");
     setUnitPrice("");
@@ -58,8 +56,17 @@ export const ItemCatalog = () => {
     setIsModalOpen(true);
   };
 
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setItemName(item.item_name);
+    setCategory(item.category);
+    setUnitPrice(item.unit_price);
+    setUnitOfMeasure(item.unit_of_measure);
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
   const closeModal = () => {
-    // Don't close while a save is in flight — prevents accidental dismissal
     if (isSaving) return;
     setIsModalOpen(false);
   };
@@ -67,7 +74,6 @@ export const ItemCatalog = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Client-side validation before hitting the network
     if (!itemName.trim()) {
       setFormError("Item name is required.");
       return;
@@ -86,26 +92,38 @@ export const ItemCatalog = () => {
     setIsSaving(true);
 
     try {
-      // POST /api/items — body matches exactly what index.js destructures:
-      // { item_name, category, unit_price, unit_of_measure }
-      // unit_price is sent as a Number, not a string, because the DB column is decimal
-      await apiClient.post("/items", {
-        item_name: itemName.trim(),
-        category: category.trim(),
-        unit_price: price,
-        unit_of_measure: unitOfMeasure.trim() || "pcs",
-      });
+      if (editingItem) {
+        await apiClient.put(`/items/${editingItem.item_id}`, {
+          item_name: itemName.trim(),
+          category: category.trim(),
+          unit_price: price,
+          unit_of_measure: unitOfMeasure.trim() || "pcs",
+        });
+      } else {
+        await apiClient.post("/items", {
+          item_name: itemName.trim(),
+          category: category.trim(),
+          unit_price: price,
+          unit_of_measure: unitOfMeasure.trim() || "pcs",
+        });
+      }
 
-      // Success: close the modal, then refresh the list
       setIsModalOpen(false);
-      // Pass true as isMounted — we're still mounted here
       await loadItems(true);
     } catch (err) {
-      // apiClient throws Error with the backend's { error } message on non-2xx.
-      // Show it inside the form — do NOT close the modal on failure.
       setFormError(err.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (itemId) => {
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await apiClient.delete(`/items/${itemId}`);
+      await loadItems(true);
+    } catch (err) {
+      alert(`Failed to delete item: ${err.message}`);
     }
   };
 
@@ -120,7 +138,6 @@ export const ItemCatalog = () => {
           </span>
         }
         action={
-          // onClick now opens the modal instead of doing nothing
           <Button variant="primary" icon={Plus} onClick={openModal}>
             Add New Master Item
           </Button>
@@ -128,7 +145,6 @@ export const ItemCatalog = () => {
       />
 
       <Card>
-        {/* Search & Filter Bar — unchanged */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <input
@@ -186,12 +202,17 @@ export const ItemCatalog = () => {
                       })}
                     </td>
                     <td className="py-3 px-3 text-right space-x-2">
-                      {/* Edit/Deactivate need PUT/DELETE routes that don't exist yet — left as-is */}
-                      <button className="text-xs font-semibold text-blue-600 hover:underline">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
                         Edit
                       </button>
-                      <button className="text-xs font-semibold text-rose-600 hover:underline">
-                        Deactivate
+                      <button
+                        onClick={() => handleDelete(item.item_id)}
+                        className="text-xs font-semibold text-rose-600 hover:underline"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -202,14 +223,12 @@ export const ItemCatalog = () => {
         )}
       </Card>
 
-      {/* ── Add Item Modal ── */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title="Add New Master Item"
+        title={editingItem ? "Edit Master Item" : "Add New Master Item"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Backend error banner — shown inside the form, modal stays open */}
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {formError}
@@ -285,7 +304,7 @@ export const ItemCatalog = () => {
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? "Saving…" : "Add Item"}
+              {isSaving ? "Saving…" : editingItem ? "Save Changes" : "Add Item"}
             </Button>
           </div>
         </form>
