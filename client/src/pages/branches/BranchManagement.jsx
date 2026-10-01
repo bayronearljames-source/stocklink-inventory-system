@@ -13,6 +13,7 @@ export const BranchManagement = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBranch, setEditingBranch] = useState(null); // null = create mode, object = edit mode
 
   // Form fields — match exactly what POST /api/branches destructures:
   // { branch_name, location, contact_phone }
@@ -46,9 +47,19 @@ export const BranchManagement = () => {
   }, [loadBranches]);
 
   const openModal = () => {
+    setEditingBranch(null);
     setBranchName('');
     setLocation('');
     setContactPhone('');
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (branch) => {
+    setEditingBranch(branch);
+    setBranchName(branch.branch_name);
+    setLocation(branch.location || '');
+    setContactPhone(branch.contact_phone || '');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -71,13 +82,21 @@ export const BranchManagement = () => {
     setIsSaving(true);
 
     try {
-      // POST /api/branches — body: { branch_name, location, contact_phone }
-      // contact_phone is optional so we include it even if empty — Prisma accepts null
-      await apiClient.post('/branches', {
-        branch_name: branchName.trim(),
-        location: location.trim() || null,
-        contact_phone: contactPhone.trim() || null,
-      });
+      if (editingBranch) {
+        // PUT /api/branches/:id
+        await apiClient.put(`/branches/${editingBranch.branch_id}`, {
+          branch_name: branchName.trim(),
+          location: location.trim() || null,
+          contact_phone: contactPhone.trim() || null,
+        });
+      } else {
+        // POST /api/branches
+        await apiClient.post('/branches', {
+          branch_name: branchName.trim(),
+          location: location.trim() || null,
+          contact_phone: contactPhone.trim() || null,
+        });
+      }
 
       setIsModalOpen(false);
       await loadBranches(true);
@@ -86,6 +105,16 @@ export const BranchManagement = () => {
       setFormError(err.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (branchId) => {
+    if (!window.confirm("Are you sure you want to delete this branch?")) return;
+    try {
+      await apiClient.delete(`/branches/${branchId}`);
+      await loadBranches(true);
+    } catch (err) {
+      alert(`Failed to delete branch: ${err.message}`);
     }
   };
 
@@ -130,9 +159,23 @@ export const BranchManagement = () => {
                 <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                   <Building2 className="w-5 h-5" />
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                  Active
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                    Active
+                  </span>
+                  <button
+                    onClick={() => openEditModal(branch)}
+                    className="text-xs font-semibold text-blue-600 hover:underline ml-2"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(branch.branch_id)}
+                    className="text-xs font-semibold text-rose-600 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
 
               <h3 className="font-bold text-slate-900 text-base mt-3">{branch.branch_name}</h3>
@@ -160,8 +203,12 @@ export const BranchManagement = () => {
         </div>
       )}
 
-      {/* ── Register New Branch Modal ── */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Register New Branch">
+      {/* ── Register / Edit Branch Modal ── */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingBranch ? "Edit Branch" : "Register New Branch"}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {formError && (
@@ -217,7 +264,7 @@ export const BranchManagement = () => {
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Register Branch'}
+              {isSaving ? 'Saving…' : editingBranch ? 'Save Changes' : 'Register Branch'}
             </Button>
           </div>
         </form>

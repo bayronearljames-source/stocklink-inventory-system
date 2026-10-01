@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import PageHeader from '../../components/common/PageHeader';
-import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import { apiClient } from '../../api/client';
-import { Package, Plus, Search, Filter } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import PageHeader from "../../components/common/PageHeader";
+import Card from "../../components/common/Card";
+import Button from "../../components/common/Button";
+import Modal from "../../components/common/Modal";
+import { apiClient } from "../../api/client";
+import { Package, Plus, Search, Filter } from "lucide-react";
 
 export const ItemCatalog = () => {
   const [items, setItems] = useState([]);
@@ -13,13 +13,14 @@ export const ItemCatalog = () => {
 
   // Modal open/close state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null); // null = create mode, object = edit mode
 
   // Controlled form fields — one piece of state per field so the instructor
   // can follow exactly which value goes into which POST body key
-  const [itemName, setItemName] = useState('');
-  const [category, setCategory] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
-  const [unitOfMeasure, setUnitOfMeasure] = useState('pcs');
+  const [itemName, setItemName] = useState("");
+  const [category, setCategory] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [unitOfMeasure, setUnitOfMeasure] = useState("pcs");
 
   // Submission state for the form
   const [isSaving, setIsSaving] = useState(false);
@@ -31,7 +32,7 @@ export const ItemCatalog = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await apiClient.get('/items');
+      const data = await apiClient.get("/items");
       if (isMounted) setItems(data);
     } catch (err) {
       if (isMounted) setError(err.message);
@@ -43,15 +44,28 @@ export const ItemCatalog = () => {
   useEffect(() => {
     let isMounted = true;
     loadItems(isMounted);
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [loadItems]);
 
   // Reset form fields and error back to defaults when the modal opens
   const openModal = () => {
-    setItemName('');
-    setCategory('');
-    setUnitPrice('');
-    setUnitOfMeasure('pcs');
+    setEditingItem(null);
+    setItemName("");
+    setCategory("");
+    setUnitPrice("");
+    setUnitOfMeasure("pcs");
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setItemName(item.item_name);
+    setCategory(item.category);
+    setUnitPrice(item.unit_price);
+    setUnitOfMeasure(item.unit_of_measure);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -67,16 +81,16 @@ export const ItemCatalog = () => {
 
     // Client-side validation before hitting the network
     if (!itemName.trim()) {
-      setFormError('Item name is required.');
+      setFormError("Item name is required.");
       return;
     }
     if (!category.trim()) {
-      setFormError('Category is required.');
+      setFormError("Category is required.");
       return;
     }
     const price = Number(unitPrice);
-    if (unitPrice === '' || isNaN(price) || price < 0) {
-      setFormError('Unit price must be a number of 0 or greater.');
+    if (unitPrice === "" || isNaN(price) || price < 0) {
+      setFormError("Unit price must be a number of 0 or greater.");
       return;
     }
 
@@ -84,15 +98,23 @@ export const ItemCatalog = () => {
     setIsSaving(true);
 
     try {
-      // POST /api/items — body matches exactly what index.js destructures:
-      // { item_name, category, unit_price, unit_of_measure }
-      // unit_price is sent as a Number, not a string, because the DB column is decimal
-      await apiClient.post('/items', {
-        item_name: itemName.trim(),
-        category: category.trim(),
-        unit_price: price,
-        unit_of_measure: unitOfMeasure.trim() || 'pcs',
-      });
+      if (editingItem) {
+        // PUT /api/items/:id
+        await apiClient.put(`/items/${editingItem.item_id}`, {
+          item_name: itemName.trim(),
+          category: category.trim(),
+          unit_price: price,
+          unit_of_measure: unitOfMeasure.trim() || "pcs",
+        });
+      } else {
+        // POST /api/items
+        await apiClient.post("/items", {
+          item_name: itemName.trim(),
+          category: category.trim(),
+          unit_price: price,
+          unit_of_measure: unitOfMeasure.trim() || "pcs",
+        });
+      }
 
       // Success: close the modal, then refresh the list
       setIsModalOpen(false);
@@ -104,6 +126,16 @@ export const ItemCatalog = () => {
       setFormError(err.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (itemId) => {
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await apiClient.delete(`/items/${itemId}`);
+      await loadItems(true);
+    } catch (err) {
+      alert(`Failed to delete item: ${err.message}`);
     }
   };
 
@@ -142,7 +174,9 @@ export const ItemCatalog = () => {
         </div>
 
         {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">Loading items…</div>
+          <div className="py-10 text-center text-sm text-slate-500">
+            Loading items…
+          </div>
         )}
 
         {!isLoading && error && (
@@ -176,12 +210,24 @@ export const ItemCatalog = () => {
                     <td className="py-3 px-3">{item.category}</td>
                     <td className="py-3 px-3">{item.unit_of_measure}</td>
                     <td className="py-3 px-3 text-right font-mono">
-                      ₱{Number(item.unit_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      ₱
+                      {Number(item.unit_price).toLocaleString("en-PH", {
+                        minimumFractionDigits: 2,
+                      })}
                     </td>
                     <td className="py-3 px-3 text-right space-x-2">
-                      {/* Edit/Deactivate need PUT/DELETE routes that don't exist yet — left as-is */}
-                      <button className="text-xs font-semibold text-blue-600 hover:underline">Edit</button>
-                      <button className="text-xs font-semibold text-rose-600 hover:underline">Deactivate</button>
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.item_id)}
+                        className="text-xs font-semibold text-rose-600 hover:underline"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -191,10 +237,13 @@ export const ItemCatalog = () => {
         )}
       </Card>
 
-      {/* ── Add Item Modal ── */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Add New Master Item">
+      {/* ── Add / Edit Item Modal ── */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingItem ? "Edit Master Item" : "Add New Master Item"}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {/* Backend error banner — shown inside the form, modal stays open */}
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
@@ -262,11 +311,16 @@ export const ItemCatalog = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={closeModal} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closeModal}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Add Item'}
+              {isSaving ? "Saving…" : editingItem ? "Save Changes" : "Add Item"}
             </Button>
           </div>
         </form>

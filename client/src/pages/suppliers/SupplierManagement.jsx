@@ -13,6 +13,7 @@ export const SupplierManagement = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState(null); // null = create mode, object = edit mode
 
   // Form fields — match exactly what POST /api/suppliers destructures:
   // { supplier_name, contact_info }
@@ -45,8 +46,17 @@ export const SupplierManagement = () => {
   }, [loadSuppliers]);
 
   const openModal = () => {
+    setEditingSupplier(null);
     setSupplierName('');
     setContactInfo('');
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (supplier) => {
+    setEditingSupplier(supplier);
+    setSupplierName(supplier.supplier_name);
+    setContactInfo(supplier.contact_info || '');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -69,11 +79,19 @@ export const SupplierManagement = () => {
     setIsSaving(true);
 
     try {
-      // POST /api/suppliers — body: { supplier_name, contact_info }
-      await apiClient.post('/suppliers', {
-        supplier_name: supplierName.trim(),
-        contact_info: contactInfo.trim() || null,
-      });
+      if (editingSupplier) {
+        // PUT /api/suppliers/:id
+        await apiClient.put(`/suppliers/${editingSupplier.supplier_id}`, {
+          supplier_name: supplierName.trim(),
+          contact_info: contactInfo.trim() || null,
+        });
+      } else {
+        // POST /api/suppliers
+        await apiClient.post('/suppliers', {
+          supplier_name: supplierName.trim(),
+          contact_info: contactInfo.trim() || null,
+        });
+      }
 
       setIsModalOpen(false);
       await loadSuppliers(true);
@@ -82,6 +100,16 @@ export const SupplierManagement = () => {
       setFormError(err.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (supplierId) => {
+    if (!window.confirm("Are you sure you want to delete this supplier?")) return;
+    try {
+      await apiClient.delete(`/suppliers/${supplierId}`);
+      await loadSuppliers(true);
+    } catch (err) {
+      alert(`Failed to delete supplier: ${err.message}`);
     }
   };
 
@@ -134,6 +162,7 @@ export const SupplierManagement = () => {
                     <th className="py-3 px-3">Supplier ID</th>
                     <th className="py-3 px-3">Supplier Name</th>
                     <th className="py-3 px-3">Contact Info</th>
+                    <th className="py-3 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -151,6 +180,20 @@ export const SupplierManagement = () => {
                           <span className="italic text-slate-400">No contact on file</span>
                         )}
                       </td>
+                      <td className="py-3 px-3 text-right space-x-2">
+                        <button
+                          onClick={() => openEditModal(supplier)}
+                          className="text-xs font-semibold text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(supplier.supplier_id)}
+                          className="text-xs font-semibold text-rose-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -160,8 +203,12 @@ export const SupplierManagement = () => {
         </>
       )}
 
-      {/* ── Add Supplier Modal ── */}
-      <Modal isOpen={isModalOpen} onClose={closeModal} title="Add Supplier Record">
+      {/* ── Add / Edit Supplier Modal ── */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingSupplier ? "Edit Supplier Record" : "Add Supplier Record"}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {formError && (
@@ -203,7 +250,7 @@ export const SupplierManagement = () => {
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
-              {isSaving ? 'Saving…' : 'Add Supplier'}
+              {isSaving ? 'Saving…' : editingSupplier ? 'Save Changes' : 'Add Supplier'}
             </Button>
           </div>
         </form>
