@@ -1,0 +1,141 @@
+const { PrismaClient } = require('@prisma/client');
+
+let prisma;
+
+/**
+ * Initialize Prisma client for testing
+ */
+function getPrismaClient() {
+  if (!prisma) {
+    prisma = new PrismaClient();
+  }
+  return prisma;
+}
+
+/**
+ * Clean up database before tests
+ * Deletes all records in the correct order to respect foreign key constraints
+ */
+async function cleanDatabase() {
+  const prisma = getPrismaClient();
+
+  // Delete in reverse dependency order (children first, parents last)
+  await prisma.stock_movements.deleteMany({});
+  await prisma.audit_logs.deleteMany({});
+  await prisma.restock_requests.deleteMany({});
+  await prisma.branch_stock.deleteMany({});
+  await prisma.central_stock.deleteMany({});
+  await prisma.supplier_items.deleteMany({});
+  await prisma.users.deleteMany({});
+  await prisma.branches.deleteMany({});
+  await prisma.central_warehouse.deleteMany({});
+  await prisma.suppliers.deleteMany({});
+  await prisma.items.deleteMany({});
+}
+
+/**
+ * Seed test data
+ */
+async function seedTestData() {
+  const prisma = getPrismaClient();
+  const bcrypt = require('bcrypt');
+
+  // Create test items
+  const item1 = await prisma.items.create({
+    data: {
+      item_name: 'Test Widget A',
+      category: 'Electronics',
+      unit_price: 99.99,
+      unit_of_measure: 'pcs',
+    },
+  });
+
+  const item2 = await prisma.items.create({
+    data: {
+      item_name: 'Test Widget B',
+      category: 'Hardware',
+      unit_price: 49.99,
+      unit_of_measure: 'pcs',
+    },
+  });
+
+  // Create test branch
+  const branch = await prisma.branches.create({
+    data: {
+      branch_name: 'Test Branch',
+      location: '123 Test St',
+      contact_phone: '555-0100',
+    },
+  });
+
+  // Create test supplier
+  const supplier = await prisma.suppliers.create({
+    data: {
+      supplier_name: 'Test Supplier Co.',
+      contact_info: 'John Tester, 555-0200, test@supplier.com',
+    },
+  });
+
+  // Create test users with different roles
+  const hashedPassword = await bcrypt.hash('password123', 10);
+
+  const adminUser = await prisma.users.create({
+    data: {
+      username: 'testadmin',
+      password_hash: hashedPassword,
+      role: 'admin',
+    },
+  });
+
+  const managerUser = await prisma.users.create({
+    data: {
+      username: 'testmanager',
+      password_hash: hashedPassword,
+      role: 'branch_manager',
+      branch_id: branch.branch_id,
+    },
+  });
+
+  const clerkUser = await prisma.users.create({
+    data: {
+      username: 'testclerk',
+      password_hash: hashedPassword,
+      role: 'clerk',
+      branch_id: branch.branch_id,
+    },
+  });
+
+  // Create branch stock
+  await prisma.branch_stock.create({
+    data: {
+      branch_id: branch.branch_id,
+      item_id: item1.item_id,
+      quantity: 100,
+      reorder_threshold: 20,
+    },
+  });
+
+  return {
+    items: [item1, item2],
+    branch,
+    supplier,
+    users: { admin: adminUser, manager: managerUser, clerk: clerkUser },
+  };
+}
+
+/**
+ * Close database connection
+ */
+async function disconnectDatabase() {
+  if (prisma) {
+    await prisma.$disconnect();
+    prisma = null;
+  }
+}
+
+module.exports = {
+  getPrismaClient,
+  cleanDatabase,
+  seedTestData,
+  disconnectDatabase,
+};

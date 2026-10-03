@@ -11,11 +11,12 @@ export const BranchManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Modal state
+  // Modal state — null = create mode, object = edit mode
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBranch, setEditingBranch] = useState(null); // null = create mode, object = edit mode
+  const [editingBranch, setEditingBranch] = useState(null);
 
-  // Form fields
+  // Form fields — match exactly what POST/PUT /api/branches destructures:
+  // { branch_name, location, contact_phone }
   const [branchName, setBranchName] = useState("");
   const [location, setLocation] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -24,10 +25,12 @@ export const BranchManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  // loadBranches as useCallback so it can be called both on mount and after create/edit
   const loadBranches = useCallback(async (isMounted) => {
     setIsLoading(true);
     setError(null);
     try {
+      // GET /api/branches — returns { branch_id, branch_name, location, contact_phone }
       const data = await apiClient.get("/branches");
       if (isMounted) setBranches(data);
     } catch (err) {
@@ -40,11 +43,10 @@ export const BranchManagement = () => {
   useEffect(() => {
     let isMounted = true;
     loadBranches(isMounted);
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [loadBranches]);
 
+  // Open modal in CREATE mode
   const openModal = () => {
     setEditingBranch(null);
     setBranchName("");
@@ -54,6 +56,7 @@ export const BranchManagement = () => {
     setIsModalOpen(true);
   };
 
+  // Open modal in EDIT mode — pre-fill fields from the existing branch object
   const openEditModal = (branch) => {
     setEditingBranch(branch);
     setBranchName(branch.branch_name);
@@ -71,6 +74,7 @@ export const BranchManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // branch_name is the only required field — location and contact_phone are optional
     if (!branchName.trim()) {
       setFormError("Branch name is required.");
       return;
@@ -81,12 +85,15 @@ export const BranchManagement = () => {
 
     try {
       if (editingBranch) {
+        // PUT /api/branches/:id — update an existing branch
         await apiClient.put(`/branches/${editingBranch.branch_id}`, {
           branch_name: branchName.trim(),
           location: location.trim() || null,
           contact_phone: contactPhone.trim() || null,
         });
       } else {
+        // POST /api/branches — create a new branch
+        // contact_phone is optional so we send null when blank — Prisma accepts null
         await apiClient.post("/branches", {
           branch_name: branchName.trim(),
           location: location.trim() || null,
@@ -97,6 +104,7 @@ export const BranchManagement = () => {
       setIsModalOpen(false);
       await loadBranches(true);
     } catch (err) {
+      // Backend { error } message shown inside the form; modal stays open on failure
       setFormError(err.message);
     } finally {
       setIsSaving(false);
@@ -209,6 +217,7 @@ export const BranchManagement = () => {
         </div>
       )}
 
+      {/* ── Register / Edit Branch Modal ── */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -238,9 +247,7 @@ export const BranchManagement = () => {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Location / Address
-              <span className="ml-1 text-slate-400 font-normal">
-                (optional)
-              </span>
+              <span className="ml-1 text-slate-400 font-normal">(optional)</span>
             </label>
             <input
               type="text"
@@ -254,9 +261,7 @@ export const BranchManagement = () => {
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Contact Phone
-              <span className="ml-1 text-slate-400 font-normal">
-                (optional)
-              </span>
+              <span className="ml-1 text-slate-400 font-normal">(optional)</span>
             </label>
             <input
               type="text"

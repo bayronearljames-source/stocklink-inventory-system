@@ -569,6 +569,127 @@ app.get('/api/audit-logs', requireAuth, requireRole('admin'), async (req, res) =
   }
 });
 
+// ─── Reports & Analytics ────────────────────────────────────────────────────
+
+// Get restock frequency report — shows most requested items
+app.get('/api/reports/restock-frequency', requireAuth, async (req, res) => {
+  try {
+    // Admin sees all branches, others see only their branch
+    const where = req.user.role === 'admin' ? {} : { branch_id: req.user.branch_id };
+
+    // Group by item, count requests, join item details
+    const frequency = await prisma.restock_requests.groupBy({
+      by: ['item_id'],
+      where,
+      _count: { request_id: true },
+      orderBy: { _count: { request_id: 'desc' } },
+      take: 10, // top 10 items
+    });
+
+    // Fetch item details for each
+    const enriched = await Promise.all(
+      frequency.map(async (f) => {
+        const item = await prisma.items.findUnique({
+          where: { item_id: f.item_id },
+        });
+        return {
+          item_id: f.item_id,
+          item_name: item?.item_name || `Item #${f.item_id}`,
+          category: item?.category,
+          restock_count: f._count.request_id,
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get average fulfillment time — from request creation to approval
+app.get('/api/reports/fulfillment-time', requireAuth, async (req, res) => {
+  try {
+    const where = req.user.role === 'admin' ? {} : { branch_id: req.user.branch_id };
+
+    // Get fulfilled requests with timestamps
+    const fulfilled = await prisma.restock_requests.findMany({
+      where: {
+        ...where,
+        status: 'fulfilled',
+        approved_at: { not: null },
+      },
+      select: {
+        requested_at: true,
+        approved_at: true,
+      },
+    });
+
+    if (fulfilled.length === 0) {
+      return res.json({
+        average_hours: 0,
+        sample_size: 0,
+        message: 'No fulfilled requests yet',
+      });
+    }
+
+    // Calculate average time difference in hours
+    const totalHours = fulfilled.reduce((sum, req) => {
+      const diffMs = new Date(req.approved_at) - new Date(req.requested_at);
+      const hours = diffMs / (1000 * 60 * 60);
+      return sum + hours;
+    }, 0);
+
+    const avgHours = totalHours / fulfilled.length;
+
+    res.json({
+      average_hours: Math.round(avgHours * 10) / 10, // 1 decimal place
+      sample_size: fulfilled.length,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get branch consumption report — total stock movements by branch
+app.get('/api/reports/branch-consumption', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    // Group movements by branch, sum quantities
+    const consumption = await prisma.stock_movements.groupBy({
+      by: ['branch_id'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+    });
+
+    // Fetch branch details
+    const enriched = await Promise.all(
+      consumption.map(async (c) => {
+        const branch = await prisma.branches.findUnique({
+          where: { branch_id: c.branch_id },
+        });
+        return {
+          branch_id: c.branch_id,
+          branch_name: branch?.branch_name || `Branch #${c.branch_id}`,
+          location: branch?.location,
+          total_units: c._sum.quantity || 0,
+        };
+      })
+    );
+
+    // Calculate total for percentage
+    const total = enriched.reduce((sum, b) => sum + b.total_units, 0);
+
+    const withPercentage = enriched.map((b) => ({
+      ...b,
+      percentage: total > 0 ? Math.round((b.total_units / total) * 100) : 0,
+    }));
+
+    res.json(withPercentage);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── Server ──────────────────────────────────────────────────────────────────
 
 const PORT = 3000;
