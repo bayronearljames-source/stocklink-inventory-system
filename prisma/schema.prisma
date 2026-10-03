@@ -19,6 +19,11 @@ model audit_logs {
   changed_by Int?
   changed_at DateTime @default(now()) @db.Timestamp(6)
   users      users?   @relation(fields: [changed_by], references: [user_id], onUpdate: NoAction)
+
+  @@index([changed_at(sort: Desc)])
+  @@index([table_name])
+  @@index([changed_by])
+  @@index([table_name, changed_at(sort: Desc)])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -33,6 +38,8 @@ model branch_stock {
   items             items     @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
 
   @@id([branch_id, item_id])
+  @@index([quantity])
+  @@index([branch_id, quantity, reorder_threshold])
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -80,6 +87,9 @@ model items {
   restock_requests restock_requests[]
   stock_movements  stock_movements[]
   supplier_items   supplier_items[]
+
+  @@index([category])
+  @@index([item_name])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -96,6 +106,12 @@ model restock_requests {
   users         users?    @relation(fields: [approved_by], references: [user_id], onUpdate: NoAction)
   branches      branches  @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
   items         items     @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+
+  @@index([status])
+  @@index([branch_id])
+  @@index([item_id])
+  @@index([requested_at(sort: Desc)])
+  @@index([status, branch_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -111,6 +127,11 @@ model stock_movements {
   branches      branches @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
   items         items    @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
   users         users?   @relation(fields: [moved_by], references: [user_id], onUpdate: NoAction)
+
+  @@index([branch_id])
+  @@index([moved_at(sort: Desc)])
+  @@index([item_id])
+  @@index([branch_id, quantity])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -148,4 +169,7 @@ model users {
   restock_requests restock_requests[]
   stock_movements  stock_movements[]
   branches         branches?          @relation(fields: [branch_id], references: [branch_id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([branch_id])
+  @@index([role])
 }
