@@ -1,8 +1,60 @@
+import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
+import { apiClient } from '../../api/client';
 import { ShieldCheck, Database, Search } from 'lucide-react';
 
 export const AuditLogs = () => {
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadLogs = useCallback(async (isMounted = true) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // GET /api/audit-logs (admin only, enforced by backend)
+      // Returns array of:
+      //   { log_id, table_name, action, old_value, new_value, changed_by, changed_at,
+      //     users: { username } }
+      const data = await apiClient.get("/audit-logs");
+      if (isMounted) setLogs(data);
+    } catch (err) {
+      if (isMounted) setError(err.message);
+    } finally {
+      if (isMounted) setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    loadLogs(isMounted);
+    return () => { isMounted = false; };
+  }, [loadLogs]);
+
+  const getActionBadge = (action) => {
+    switch (action?.toUpperCase()) {
+      case 'INSERT':
+        return 'px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold';
+      case 'UPDATE':
+        return 'px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold';
+      case 'DELETE':
+        return 'px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold';
+      default:
+        return 'px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-bold';
+    }
+  };
+
+  const formatJsonValue = (value) => {
+    if (!value) return <span className="text-slate-400">NULL</span>;
+    try {
+      const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+      return JSON.stringify(parsed);
+    } catch {
+      return String(value);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -19,56 +71,77 @@ export const AuditLogs = () => {
         title="Automated Audit Trail"
         subtitle="Captures (table_name, action, old_state, new_state, changed_by, timestamp) at the SQL level"
       >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50/50">
-                <th className="py-3 px-3">Log ID</th>
-                <th className="py-3 px-3">Timestamp</th>
-                <th className="py-3 px-3">Table</th>
-                <th className="py-3 px-3">Operation</th>
-                <th className="py-3 px-3">Old Value</th>
-                <th className="py-3 px-3">New Value</th>
-                <th className="py-3 px-3">Executed By (Role)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-mono text-xs text-slate-700">
-              <tr>
-                <td className="py-3 px-3 font-bold text-purple-700">AUD-00192</td>
-                <td className="py-3 px-3 text-slate-500">2024-09-22 14:32:01</td>
-                <td className="py-3 px-3 font-semibold text-slate-900">branch_stock</td>
-                <td className="py-3 px-3">
-                  <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">UPDATE</span>
-                </td>
-                <td className="py-3 px-3 text-rose-600 font-medium">&#123;"qty": 3, "threshold": 5&#125;</td>
-                <td className="py-3 px-3 text-emerald-600 font-medium">&#123;"qty": 2, "threshold": 5&#125;</td>
-                <td className="py-3 px-3 font-sans text-slate-900">clerk (Marco Santos)</td>
-              </tr>
-              <tr className="bg-purple-50/30">
-                <td className="py-3 px-3 font-bold text-purple-700">AUD-00193</td>
-                <td className="py-3 px-3 text-slate-500">2024-09-22 14:32:01</td>
-                <td className="py-3 px-3 font-semibold text-slate-900">restock_requests</td>
-                <td className="py-3 px-3">
-                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">INSERT</span>
-                </td>
-                <td className="py-3 px-3 text-slate-400">NULL</td>
-                <td className="py-3 px-3 text-purple-800 font-medium">&#123;"req_id": "REQ-001", "status": "PENDING"&#125;</td>
-                <td className="py-3 px-3 font-sans text-purple-900 font-semibold">[DB TRIGGER: trg_auto_restock]</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-3 font-bold text-purple-700">AUD-00191</td>
-                <td className="py-3 px-3 text-slate-500">2024-09-21 16:40:12</td>
-                <td className="py-3 px-3 font-semibold text-slate-900">central_warehouse</td>
-                <td className="py-3 px-3">
-                  <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">UPDATE</span>
-                </td>
-                <td className="py-3 px-3 text-rose-600 font-medium">&#123;"stock": 130&#125;</td>
-                <td className="py-3 px-3 text-emerald-600 font-medium">&#123;"stock": 120&#125;</td>
-                <td className="py-3 px-3 font-sans text-purple-900 font-semibold">[STORED PROC: sp_fulfill]</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {isLoading && (
+          <div className="py-10 text-center text-sm text-slate-500">
+            Loading audit logs…
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="py-10 text-center text-sm text-rose-600">
+            Failed to load audit logs: {error}
+          </div>
+        )}
+
+        {!isLoading && !error && logs.length === 0 && (
+          <div className="py-10 text-center text-sm text-slate-500">
+            No audit logs recorded yet. Logs are automatically generated by PostgreSQL triggers on UPDATE/INSERT operations.
+          </div>
+        )}
+
+        {!isLoading && !error && logs.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase bg-slate-50/50">
+                  <th className="py-3 px-3">Log ID</th>
+                  <th className="py-3 px-3">Timestamp</th>
+                  <th className="py-3 px-3">Table</th>
+                  <th className="py-3 px-3">Operation</th>
+                  <th className="py-3 px-3">Old Value</th>
+                  <th className="py-3 px-3">New Value</th>
+                  <th className="py-3 px-3">Executed By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-mono text-xs text-slate-700">
+                {logs.map((log) => (
+                  <tr key={log.log_id}>
+                    <td className="py-3 px-3 font-bold text-purple-700">
+                      #{log.log_id}
+                    </td>
+                    <td className="py-3 px-3 text-slate-500">
+                      {new Date(log.changed_at).toLocaleString("en-PH", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </td>
+                    <td className="py-3 px-3 font-semibold text-slate-900">
+                      {log.table_name}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className={getActionBadge(log.action)}>
+                        {log.action?.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-rose-600 font-medium max-w-xs truncate">
+                      {formatJsonValue(log.old_value)}
+                    </td>
+                    <td className="py-3 px-3 text-emerald-600 font-medium max-w-xs truncate">
+                      {formatJsonValue(log.new_value)}
+                    </td>
+                    <td className="py-3 px-3 font-sans text-slate-900">
+                      {log.users?.username ?? `User #${log.changed_by}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
