@@ -617,11 +617,11 @@ app.get('/api/reports/fulfillment-time', requireAuth, async (req, res) => {
       where: {
         ...where,
         status: 'fulfilled',
-        approved_at: { not: null },
+        fulfilled_at: { not: null },
       },
       select: {
         requested_at: true,
-        approved_at: true,
+        fulfilled_at: true,
       },
     });
 
@@ -635,7 +635,7 @@ app.get('/api/reports/fulfillment-time', requireAuth, async (req, res) => {
 
     // Calculate average time difference in hours
     const totalHours = fulfilled.reduce((sum, req) => {
-      const diffMs = new Date(req.approved_at) - new Date(req.requested_at);
+      const diffMs = new Date(req.fulfilled_at) - new Date(req.requested_at);
       const hours = diffMs / (1000 * 60 * 60);
       return sum + hours;
     }, 0);
@@ -692,7 +692,7 @@ app.get('/api/reports/branch-consumption', requireAuth, requireRole('admin'), as
 
 // ─── Server ──────────────────────────────────────────────────────────────────
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

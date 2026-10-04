@@ -15,7 +15,8 @@ export const ItemCatalog = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null); // null = create mode, object = edit mode
 
-  // Controlled form fields
+  // Controlled form fields — one piece of state per field so the instructor
+  // can follow exactly which value goes into which POST body key
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
@@ -25,6 +26,8 @@ export const ItemCatalog = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  // useCallback so loadItems can be called both on mount (via useEffect)
+  // and after a successful create, without being re-created on every render
   const loadItems = useCallback(async (isMounted) => {
     setIsLoading(true);
     setError(null);
@@ -36,7 +39,7 @@ export const ItemCatalog = () => {
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []);
+  }, []); // no dependencies — apiClient is module-level, never changes
 
   useEffect(() => {
     let isMounted = true;
@@ -46,6 +49,7 @@ export const ItemCatalog = () => {
     };
   }, [loadItems]);
 
+  // Reset form fields and error back to defaults when the modal opens
   const openModal = () => {
     setEditingItem(null);
     setItemName("");
@@ -67,6 +71,7 @@ export const ItemCatalog = () => {
   };
 
   const closeModal = () => {
+    // Don't close while a save is in flight — prevents accidental dismissal
     if (isSaving) return;
     setIsModalOpen(false);
   };
@@ -74,6 +79,7 @@ export const ItemCatalog = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Client-side validation before hitting the network
     if (!itemName.trim()) {
       setFormError("Item name is required.");
       return;
@@ -93,6 +99,7 @@ export const ItemCatalog = () => {
 
     try {
       if (editingItem) {
+        // PUT /api/items/:id
         await apiClient.put(`/items/${editingItem.item_id}`, {
           item_name: itemName.trim(),
           category: category.trim(),
@@ -100,6 +107,7 @@ export const ItemCatalog = () => {
           unit_of_measure: unitOfMeasure.trim() || "pcs",
         });
       } else {
+        // POST /api/items
         await apiClient.post("/items", {
           item_name: itemName.trim(),
           category: category.trim(),
@@ -108,9 +116,13 @@ export const ItemCatalog = () => {
         });
       }
 
+      // Success: close the modal, then refresh the list
       setIsModalOpen(false);
+      // Pass true as isMounted — we're still mounted here
       await loadItems(true);
     } catch (err) {
+      // apiClient throws Error with the backend's { error } message on non-2xx.
+      // Show it inside the form — do NOT close the modal on failure.
       setFormError(err.message);
     } finally {
       setIsSaving(false);
@@ -138,6 +150,7 @@ export const ItemCatalog = () => {
           </span>
         }
         action={
+          // onClick now opens the modal instead of doing nothing
           <Button variant="primary" icon={Plus} onClick={openModal}>
             Add New Master Item
           </Button>
@@ -145,6 +158,7 @@ export const ItemCatalog = () => {
       />
 
       <Card>
+        {/* Search & Filter Bar — unchanged */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <input
@@ -223,12 +237,14 @@ export const ItemCatalog = () => {
         )}
       </Card>
 
+      {/* ── Add / Edit Item Modal ── */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingItem ? "Edit Master Item" : "Add New Master Item"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Backend error banner — shown inside the form, modal stays open */}
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {formError}
