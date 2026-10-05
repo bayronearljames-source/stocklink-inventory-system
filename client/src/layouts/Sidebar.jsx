@@ -1,54 +1,51 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NAV_ITEMS } from '../utils/navConfig';
-import { ROLE_LABELS, ROLE_BADGE_COLORS } from '../utils/constants';
-import { Wrench, Shield } from 'lucide-react';
+import { ROLE_LABELS } from '../utils/constants';
+import { Boxes, ShieldCheck } from 'lucide-react';
 
 export const Sidebar = () => {
   const { user } = useAuth();
 
   if (!user) return null;
 
-  // Filter navigation items by active user role
   const visibleNavItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
-
-  // Group items by category
   const categories = Array.from(new Set(visibleNavItems.map((item) => item.category)));
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800 select-none">
-      {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-800 bg-slate-950">
-        <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-950">
-          <Wrench className="w-5 h-5" />
+    <aside className="flex w-64 shrink-0 flex-col border-r border-[#263d37] bg-[#142923] text-slate-300">
+      <div className="flex h-[72px] items-center gap-3 border-b border-white/10 px-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d8eee0] text-[#174a38] shadow-sm">
+          <Boxes className="h-5 w-5" strokeWidth={2.2} />
         </div>
-        <div>
-          <div className="font-bold text-white text-base tracking-wide flex items-center gap-1.5">
-            StockLink
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              v1.0
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[17px] font-bold tracking-tight text-white">StockLink</span>
+            <span className="rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#b5d5c2]">
+              Ops
             </span>
           </div>
-          <div className="text-[11px] text-slate-400 font-medium">Hardware & Tools Dist.</div>
+          <div className="mt-0.5 truncate text-[11px] font-medium text-[#a5b9b1]">
+            Hardware &amp; Tools Distribution
+          </div>
         </div>
       </div>
 
-      {/* Role Scoping Banner */}
-      <div className="px-4 py-3 bg-slate-800/60 border-b border-slate-800">
-        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-          <Shield className="w-3 h-3 text-slate-400" /> Active Role Scope
+      <div className="mx-3 mt-5 rounded-xl border border-white/10 bg-white/[0.045] px-3.5 py-3">
+        <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a5b9b1]">
+          <ShieldCheck className="h-3.5 w-3.5 text-[#a9d4b7]" />
+          Signed in as
         </div>
-        <div className="text-xs font-semibold text-white truncate">{ROLE_LABELS[user.role]}</div>
-        <div className="text-[11px] text-slate-400 truncate mt-0.5">
-          {user.branchName || 'All System Branches'}
+        <div className="truncate text-sm font-semibold text-white">{ROLE_LABELS[user.role]}</div>
+        <div className="mt-1 truncate text-xs text-[#a5b9b1]">
+          {user.branchName || 'All system branches'}
         </div>
       </div>
 
-      {/* Navigation Groups */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-6">
         {categories.map((category) => (
           <div key={category}>
-            <div className="px-3 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2">
+            <div className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#789188]">
               {category}
             </div>
             <ul className="space-y-1">
@@ -61,14 +58,14 @@ export const Sidebar = () => {
                       <NavLink
                         to={item.path}
                         className={({ isActive }) =>
-                          `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                          `group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors ${
                             isActive
-                              ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                              ? 'bg-[#d8eee0] font-semibold text-[#174a38] shadow-sm'
+                              : 'font-medium text-[#bdcdc6] hover:bg-white/[0.07] hover:text-white'
                           }`
                         }
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.8} />
                         <span className="truncate">{item.label}</span>
                       </NavLink>
                     </li>
@@ -79,9 +76,11 @@ export const Sidebar = () => {
         ))}
       </nav>
 
-      {/* Footer Info */}
-      <div className="p-3 border-t border-slate-800 text-[11px] text-slate-400 text-center">
-        IM101 Final Project • Group 3
+      <div className="border-t border-white/10 px-4 py-4">
+        <div className="flex items-center justify-between text-[10px] font-medium text-[#91a79e]">
+          <span>IM101 · Group 3</span>
+          <span className="rounded-full border border-white/10 px-2 py-1 text-[9px] uppercase tracking-wider">v1.0</span>
+        </div>
       </div>
     </aside>
   );
