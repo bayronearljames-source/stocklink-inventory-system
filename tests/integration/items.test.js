@@ -36,7 +36,7 @@ describe('Items CRUD Operations', () => {
 
       expect(newItem).toBeDefined();
       expect(newItem.item_name).toBe('New Test Item');
-      expect(newItem.unit_price).toBe(299.99);
+      expect(parseFloat(newItem.unit_price)).toBe(299.99); // Decimal returns as string
       expect(newItem.category).toBe('Furniture');
     });
 
@@ -94,7 +94,7 @@ describe('Items CRUD Operations', () => {
         },
       });
 
-      expect(updated.unit_price).toBe(129.99);
+      expect(parseFloat(updated.unit_price)).toBe(129.99); // Decimal returns as string
       expect(updated.category).toBe('Updated Category');
       expect(updated.item_name).toBe(testData.items[0].item_name); // Unchanged
     });
@@ -175,7 +175,7 @@ describe('Items CRUD Operations', () => {
         },
       });
 
-      expect(item.unit_price).toBe(19.99);
+      expect(parseFloat(item.unit_price)).toBe(19.99); // Decimal returns as string
     });
   });
 });

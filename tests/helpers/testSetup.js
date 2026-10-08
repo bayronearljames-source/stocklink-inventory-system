@@ -105,6 +105,31 @@ async function seedTestData() {
     },
   });
 
+  // Create central warehouse
+  const warehouse = await prisma.central_warehouse.create({
+    data: {
+      warehouse_name: 'Central Test Warehouse',
+      location: '999 Warehouse Ave',
+    },
+  });
+
+  // Create central stock for fulfillment tests
+  await prisma.central_stock.create({
+    data: {
+      warehouse_id: warehouse.warehouse_id,
+      item_id: item1.item_id,
+      quantity: 1000, // Enough for restock fulfillment tests
+    },
+  });
+
+  await prisma.central_stock.create({
+    data: {
+      warehouse_id: warehouse.warehouse_id,
+      item_id: item2.item_id,
+      quantity: 1000,
+    },
+  });
+
   // Create branch stock
   await prisma.branch_stock.create({
     data: {
@@ -119,6 +144,7 @@ async function seedTestData() {
     items: [item1, item2],
     branch,
     supplier,
+    warehouse,
     users: { admin: adminUser, manager: managerUser, clerk: clerkUser },
   };
 }

@@ -36,8 +36,8 @@ describe('Stock Movement Flow', () => {
           item_id: testData.items[0].item_id,
           movement_type: 'sale',
           quantity: 10,
-          unit_price: testData.items[0].unit_price,
-          performed_by: testData.users.clerk.user_id,
+          moved_by: testData.users.clerk.user_id, // Correct field name
+          // Note: unit_price doesn't exist in stock_movements schema
         },
       });
 
@@ -73,14 +73,13 @@ describe('Stock Movement Flow', () => {
           item_id: testData.items[0].item_id,
           movement_type: 'withdrawal',
           quantity: 5,
-          unit_price: testData.items[0].unit_price,
-          performed_by: testData.users.manager.user_id,
-          notes: 'Damaged goods removal',
+          moved_by: testData.users.manager.user_id,
+          // Note: unit_price and notes don't exist in stock_movements schema
         },
       });
 
       expect(movement.movement_type).toBe('withdrawal');
-      expect(movement.notes).toBe('Damaged goods removal');
+      expect(movement.quantity).toBe(5);
     });
 
     it('should record an adjustment movement', async () => {
@@ -89,15 +88,14 @@ describe('Stock Movement Flow', () => {
           branch_id: testData.branch.branch_id,
           item_id: testData.items[0].item_id,
           movement_type: 'adjustment',
-          quantity: -3, // Correction
-          unit_price: testData.items[0].unit_price,
-          performed_by: testData.users.admin.user_id,
-          notes: 'Inventory count correction',
+          quantity: 3, // DB has CHECK (quantity > 0), cannot be negative
+          moved_by: testData.users.admin.user_id,
+          // Note: unit_price and notes don't exist in stock_movements schema
         },
       });
 
       expect(movement.movement_type).toBe('adjustment');
-      expect(movement.quantity).toBe(-3);
+      expect(movement.quantity).toBe(3); // Changed from -3 to 3 due to constraint
     });
   });
 
@@ -131,7 +129,6 @@ describe('Stock Movement Flow', () => {
           table_name: 'branch_stock',
           // record_id would be the composite key, but audit logs may not have this
         },
-        },
         orderBy: {
           changed_at: 'desc',
         },
@@ -139,8 +136,8 @@ describe('Stock Movement Flow', () => {
 
       expect(auditLog).toBeDefined();
       expect(auditLog.action).toMatch(/UPDATE|INSERT/);
-      expect(auditLog.old_values).toBeDefined();
-      expect(auditLog.new_values).toBeDefined();
+      expect(auditLog.old_value).toBeDefined(); // Singular, not plural
+      expect(auditLog.new_value).toBeDefined(); // Singular, not plural
     });
   });
 
