@@ -102,8 +102,7 @@ describe('Restock Request Workflow', () => {
   });
 
   describe('Restock Request Fulfillment (Stored Procedure)', () => {
-    // Skip these tests until migration 004_add_stock_movements_logging.sql is applied to test database
-    it.skip('should fulfill approved restock request and update stock', async () => {
+    it('should fulfill approved restock request and update stock', async () => {
       // Create a PENDING restock request (procedure expects status='pending')
       const restockRequest = await prisma.restock_requests.create({
         data: {
@@ -151,7 +150,7 @@ describe('Restock Request Workflow', () => {
       expect(updatedStock.quantity).toBe(initialStock.quantity + 100);
     });
 
-    it.skip('should create stock movement record during fulfillment', async () => {
+    it('should create stock movement record during fulfillment', async () => {
       const restockRequest = await prisma.restock_requests.create({
         data: {
           branch_id: testData.branch.branch_id,
