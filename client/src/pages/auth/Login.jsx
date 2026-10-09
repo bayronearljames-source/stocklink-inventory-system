@@ -95,7 +95,7 @@ export const Login = () => {
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => handleQuickLogin("admin1", "Passw0rd!")}
+              onClick={() => handleQuickLogin("testadmin", "Admin1234!")}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100/80 transition-all text-left group disabled:opacity-50"
             >
               <div>
@@ -104,7 +104,7 @@ export const Login = () => {
                   Central Warehouse Admin
                 </div>
                 <div className="text-[11px] text-purple-700 mt-0.5">
-                  admin1 — all branches, catalog, approvals
+                  testadmin — all branches, catalog, approvals
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition-transform" />
@@ -113,7 +113,7 @@ export const Login = () => {
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => handleQuickLogin("manager1", "Passw0rd!")}
+              onClick={() => handleQuickLogin("testmanager", "Admin1234!")}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100/80 transition-all text-left group disabled:opacity-50"
             >
               <div>
@@ -122,7 +122,7 @@ export const Login = () => {
                   Branch Manager
                 </div>
                 <div className="text-[11px] text-blue-700 mt-0.5">
-                  manager1 — unconfirmed password, may need updating
+                  testmanager — branch stock, restock approvals
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform" />
@@ -131,7 +131,7 @@ export const Login = () => {
             <button
               type="button"
               disabled={isSubmitting}
-              onClick={() => handleQuickLogin("clerk1", "Passw0rd!")}
+              onClick={() => handleQuickLogin("testclerk", "Admin1234!")}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80 transition-all text-left group disabled:opacity-50"
             >
               <div>
@@ -140,7 +140,7 @@ export const Login = () => {
                   Branch Staff / Clerk
                 </div>
                 <div className="text-[11px] text-emerald-700 mt-0.5">
-                  clerk1 — single branch access
+                  testclerk — single branch access
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
