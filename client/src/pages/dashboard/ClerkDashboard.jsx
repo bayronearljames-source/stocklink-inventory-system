@@ -126,7 +126,11 @@ export const ClerkDashboard = () => {
     <div>
       <PageHeader
         title="Branch Staff / Clerk Workspace"
-        description="Log day-to-day stock sales and withdrawals. Decrementing stock automatically fires the low-stock database trigger."
+        description={
+          user?.branch_name
+            ? `Working at: ${user.branch_name} • Log day-to-day stock sales and withdrawals.`
+            : "Log day-to-day stock sales and withdrawals. Decrementing stock automatically fires the low-stock database trigger."
+        }
         badge={
           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
             Branch Clerk

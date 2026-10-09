@@ -13,14 +13,25 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const user = await prisma.users.findFirst({ where: { username } });
+    const user = await prisma.users.findFirst({
+      where: { username },
+      include: { branches: true } // Include branch details if user is assigned to a branch
+    });
     const valid = user && (await bcrypt.compare(password, user.password_hash));
     // Same message for both failures so the API doesn't reveal which usernames exist.
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-   const payload = { id: user.user_id, role: user.role, branch_id: user.branch_id };
+    const payload = { id: user.user_id, role: user.role, branch_id: user.branch_id };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, user: { ...payload, username: user.username } });
+
+    // Include branch name in the response for managers and clerks
+    const userResponse = {
+      ...payload,
+      username: user.username,
+      branch_name: user.branches?.branch_name || null
+    };
+
+    res.json({ token, user: userResponse });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });
