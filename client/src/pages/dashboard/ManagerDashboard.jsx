@@ -68,7 +68,11 @@ export const ManagerDashboard = () => {
     <div>
       <PageHeader
         title="Branch Manager Dashboard"
-        description="Live stock levels and restock status for your branch. Data is automatically scoped by the server to your assigned branch."
+        description={
+          user?.branch_name
+            ? `Managing: ${user.branch_name} • Live stock levels and restock status for your branch.`
+            : "Live stock levels and restock status for your branch. Data is automatically scoped by the server to your assigned branch."
+        }
         badge={
           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300">
             Branch Manager

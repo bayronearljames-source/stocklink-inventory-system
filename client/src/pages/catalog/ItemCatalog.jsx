@@ -11,6 +11,10 @@ export const ItemCatalog = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+
   // Modal open/close state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null); // null = create mode, object = edit mode
@@ -139,6 +143,21 @@ export const ItemCatalog = () => {
     }
   };
 
+  // Get unique categories from items
+  const categories = ["All Categories", ...new Set(items.map(item => item.category).filter(Boolean))];
+
+  // Filter items based on search and category
+  const filteredItems = items.filter(item => {
+    const matchesSearch = searchQuery === "" ||
+      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory = selectedCategory === "All Categories" ||
+      item.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div>
       <PageHeader
@@ -158,19 +177,32 @@ export const ItemCatalog = () => {
       />
 
       <Card>
-        {/* Search & Filter Bar — unchanged */}
+        {/* Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <input
               type="text"
               placeholder="Search by item name or category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
-          <Button variant="secondary" icon={Filter} size="sm">
-            Filter Category
-          </Button>
+          <div className="relative">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="pl-3 pr-10 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white appearance-none cursor-pointer"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+            <Filter className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+          </div>
         </div>
 
         {isLoading && (
@@ -191,7 +223,13 @@ export const ItemCatalog = () => {
           </div>
         )}
 
-        {!isLoading && !error && items.length > 0 && (
+        {!isLoading && !error && items.length > 0 && filteredItems.length === 0 && (
+          <div className="py-10 text-center text-sm text-slate-500">
+            No items match your search or filter criteria.
+          </div>
+        )}
+
+        {!isLoading && !error && filteredItems.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
@@ -204,7 +242,7 @@ export const ItemCatalog = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {items.map((item) => (
+                {filteredItems.map((item) => (
                   <tr key={item.item_id}>
                     <td className="py-3 px-3 font-medium">{item.item_name}</td>
                     <td className="py-3 px-3">{item.category}</td>
