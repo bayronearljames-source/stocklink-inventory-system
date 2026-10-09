@@ -1,8 +1,16 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Explicitly load .env.test for test suite
-dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
+// Tests call cleanDatabase(), which deletes application rows. Require a dedicated
+// test environment so a missing .env.test cannot fall back to the root .env.
+const testEnvPath = path.resolve(__dirname, '../../.env.test');
+const testEnv = dotenv.config({ path: testEnvPath, override: true });
+if (testEnv.error) {
+  throw new Error('Missing .env.test. Create it with a disposable test database before running tests.');
+}
+if (!process.env.DATABASE_URL) {
+  throw new Error('.env.test must define DATABASE_URL for the disposable test database.');
+}
 
 const { PrismaClient } = require('@prisma/client');
 
