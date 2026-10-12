@@ -1,4 +1,22 @@
 require("dotenv").config();
+
+// Database connection warning
+try {
+  const dbUrl = new URL(process.env.DATABASE_URL);
+  console.log('🗄️  Database host:', dbUrl.hostname);
+
+  // Warn if connected to production (check for common production identifiers)
+  const hostname = dbUrl.hostname.toLowerCase();
+  if (hostname.includes('pooler.supabase.com') &&
+      !process.env.DB_ENVIRONMENT?.includes('test') &&
+      !process.env.DB_ENVIRONMENT?.includes('development')) {
+    console.warn('⚠️  WARNING: Potentially connected to PRODUCTION database!');
+    console.warn('⚠️  Set DB_ENVIRONMENT=development or DB_ENVIRONMENT=test if this is not production.');
+  }
+} catch (error) {
+  console.error('❌ Failed to parse DATABASE_URL:', error.message);
+}
+
 const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
