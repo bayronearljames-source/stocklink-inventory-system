@@ -99,4 +99,53 @@ describe('Audit Logs', () => {
       expect(count).toBeGreaterThan(0);
     });
   });
+
+  describe('Central stock audit trigger', () => {
+    it('should capture the warehouse, before/after balances, and actor', async () => {
+      const stockBefore = await prisma.central_stock.findUnique({
+        where: {
+          warehouse_id_item_id: {
+            warehouse_id: testData.warehouse.warehouse_id,
+            item_id: testData.items[0].item_id,
+          },
+        },
+      });
+      const nextQuantity = stockBefore.quantity + 7;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT set_config('app.user_id', ${String(testData.users.admin.user_id)}, true)`;
+        await tx.central_stock.update({
+          where: {
+            warehouse_id_item_id: {
+              warehouse_id: testData.warehouse.warehouse_id,
+              item_id: testData.items[0].item_id,
+            },
+          },
+          data: { quantity: nextQuantity },
+        });
+      });
+
+      const log = await prisma.audit_logs.findFirst({
+        where: {
+          table_name: 'central_stock',
+          record_id: testData.items[0].item_id,
+          action: 'UPDATE',
+          changed_by: testData.users.admin.user_id,
+        },
+        orderBy: { log_id: 'desc' },
+      });
+
+      expect(log).toBeDefined();
+      expect(log.old_value).toMatchObject({
+        warehouse_id: testData.warehouse.warehouse_id,
+        item_id: testData.items[0].item_id,
+        quantity: stockBefore.quantity,
+      });
+      expect(log.new_value).toMatchObject({
+        warehouse_id: testData.warehouse.warehouse_id,
+        item_id: testData.items[0].item_id,
+        quantity: nextQuantity,
+      });
+    });
+  });
 });

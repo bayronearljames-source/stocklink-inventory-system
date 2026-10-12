@@ -70,13 +70,15 @@ Keep `.env`, `client/.env`, and `.env.test` private. They are ignored by Git. Ne
 
 The Jest integration tests modify database contents: their setup deletes rows from the application tables and creates test fixtures. **Never run them against production, a shared demo database, or any database containing data you need to keep.**
 
-Create a separate disposable test database, apply the schema and SQL routines to it, then create a root `.env.test` file containing its connection string:
+Create a separate disposable test project, apply the schema and SQL routines to it, then create `.env.test` from the safe template:
 
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/stocklink_test"
+```sh
+cp .env.test.example .env.test
 ```
 
-The test helper requires `.env.test` and will fail fast if that file or `DATABASE_URL` is missing; it will not use the root `.env` as a fallback.
+Replace the placeholders with the separate test project's connection string. Keep `DB_ENVIRONMENT=test`. The `pretest` check requires both `.env` and `.env.test`, checks that the test project differs from the app project, and never prints either connection string. Integration test setup repeats the check before creating its Prisma client. If `.env.test` is missing or points to the same Supabase project as `.env`, tests stop before connecting.
+
+The backend prints a sanitized database environment label and project target on startup. Set `DB_ENVIRONMENT` in your local `.env` (for example, `development` or `production`) and verify the target shown in the backend terminal before using write actions. The label does not change the database connection.
 
 Run the full suite:
 

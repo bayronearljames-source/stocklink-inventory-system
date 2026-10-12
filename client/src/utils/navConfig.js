@@ -48,6 +48,14 @@ export const NAV_ITEMS = [
     category: 'Catalog & Stock',
   },
   {
+    id: 'central-warehouse',
+    label: 'Central Warehouse',
+    path: '/central-warehouse',
+    icon: Boxes,
+    roles: [ROLES.ADMIN],
+    category: 'Catalog & Stock',
+  },
+  {
     id: 'stock',
     label: 'Branch Stock Levels',
     path: '/stock',

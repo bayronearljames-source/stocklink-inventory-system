@@ -53,6 +53,10 @@ export const RestockRequests = () => {
 
   // Per-row action states so buttons disable only the row being acted on
   const [rejectingId, setRejectingId] = useState(null);
+  const [fulfillingId, setFulfillingId] = useState(null);
+  const [warehouses, setWarehouses] = useState([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [warehouseError, setWarehouseError] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState("");
 
@@ -80,6 +84,21 @@ export const RestockRequests = () => {
     loadRequests();
   }, [loadRequests]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    let isMounted = true;
+    apiClient.get("/warehouses")
+      .then((data) => {
+        if (!isMounted) return;
+        setWarehouses(data);
+        setSelectedWarehouseId((current) => current || String(data[0]?.warehouse_id ?? ""));
+      })
+      .catch((err) => {
+        if (isMounted) setWarehouseError(err.message);
+      });
+    return () => { isMounted = false; };
+  }, [isAdmin]);
+
   // POST /api/restock-requests/:id/reject — no extra body params needed
   const handleReject = async (requestId) => {
     setRejectingId(requestId);
@@ -97,6 +116,27 @@ export const RestockRequests = () => {
     }
   };
 
+  const handleFulfill = async (requestId) => {
+    if (!selectedWarehouseId) {
+      setActionError("Select a central warehouse before fulfilling a request.");
+      return;
+    }
+    setFulfillingId(requestId);
+    setActionError(null);
+    setActionSuccess("");
+    try {
+      await apiClient.post(`/restock-requests/${requestId}/fulfill`, {
+        warehouse_id: Number(selectedWarehouseId),
+      });
+      setActionSuccess(`Request #${requestId} fulfilled from the selected warehouse.`);
+      await loadRequests();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setFulfillingId(null);
+    }
+  };
+
   // Filter to the active tab
   const visibleRows = requests.filter((r) => r.status === activeTab);
 
@@ -107,7 +147,7 @@ export const RestockRequests = () => {
     <div>
       <PageHeader
         title="Restock Requests Queue"
-        description="Database-trigger-generated restock requests. Admin can reject here; fulfillment via sp_fulfill_restock_request requires a warehouse_id lookup endpoint (pending backend)."
+        description="Review branch restock requests. Administrators can fulfill requests from a selected central warehouse or reject them."
         badge={
           <span
             className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
@@ -135,14 +175,28 @@ export const RestockRequests = () => {
         </div>
       )}
 
-      {/* Fulfill notice — honest about what's not wired yet */}
+      {/* Fulfillment requires an administrator-selected source warehouse. */}
       {isAdmin && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-          <strong>Approve &amp; Fulfill</strong> calls{" "}
-          <code>sp_fulfill_restock_request()</code> and requires a{" "}
-          <code>warehouse_id</code> — no <code>/api/warehouses</code> list route
-          exists yet. Reject is fully wired. Fulfill button is placeholder until
-          Bayron exposes that route.
+        <div className="mb-4 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center gap-3">
+          <label htmlFor="fulfillment-warehouse" className="font-semibold">Fulfill from warehouse</label>
+          <select
+            id="fulfillment-warehouse"
+            value={selectedWarehouseId}
+            onChange={(event) => setSelectedWarehouseId(event.target.value)}
+            disabled={warehouses.length === 0}
+            className="max-w-md px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            {!warehouses.length && <option value="">No warehouses available</option>}
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.warehouse_id} value={String(warehouse.warehouse_id)}>
+                {warehouse.warehouse_name} — {warehouse.location}
+              </option>
+            ))}
+          </select>
+          {warehouseError && <span className="text-rose-700">Could not load warehouses: {warehouseError}</span>}
+          {!warehouseError && warehouses.length === 0 && (
+            <span className="text-amber-800">Add a central warehouse before fulfilling requests.</span>
+          )}
         </div>
       )}
 
@@ -245,24 +299,22 @@ export const RestockRequests = () => {
                     </td>
                     {isAdmin && activeTab === "pending" && (
                       <td className="py-3 px-3 text-right space-x-2">
-                        {/* Fulfill — placeholder, warehouse_id lookup not yet available */}
                         <Button
                           variant="primary"
                           size="sm"
-                          icon={Zap}
-                          disabled
-                          title="Requires /api/warehouses endpoint — pending backend"
+                          icon={fulfillingId === req.request_id ? Loader2 : Zap}
+                          disabled={!selectedWarehouseId || fulfillingId === req.request_id || rejectingId === req.request_id}
+                          onClick={() => handleFulfill(req.request_id)}
                         >
-                          Fulfill (sp_fulfill)
+                          {fulfillingId === req.request_id ? "Fulfilling…" : "Fulfill"}
                         </Button>
-                        {/* Reject — fully wired to POST /api/restock-requests/:id/reject */}
                         <Button
                           variant="danger"
                           size="sm"
                           icon={
                             rejectingId === req.request_id ? Loader2 : XCircle
                           }
-                          disabled={rejectingId === req.request_id}
+                          disabled={rejectingId === req.request_id || fulfillingId === req.request_id}
                           onClick={() => handleReject(req.request_id)}
                         >
                           {rejectingId === req.request_id

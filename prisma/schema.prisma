@@ -68,10 +68,11 @@ model central_stock {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model central_warehouse {
-  warehouse_id   Int             @id @default(autoincrement())
-  warehouse_name String          @db.VarChar(100)
-  location       String          @db.VarChar(200)
-  central_stock  central_stock[]
+  warehouse_id    Int               @id @default(autoincrement())
+  warehouse_name  String            @db.VarChar(100)
+  location        String            @db.VarChar(200)
+  central_stock   central_stock[]
+  stock_movements stock_movements[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -120,12 +121,14 @@ model stock_movements {
   movement_id   Int      @id @default(autoincrement())
   branch_id     Int
   item_id       Int
+  warehouse_id  Int?
   moved_by      Int?
   movement_type String   @db.VarChar(20)
   quantity      Int
   moved_at      DateTime @default(now()) @db.Timestamp(6)
   branches      branches @relation(fields: [branch_id], references: [branch_id], onUpdate: NoAction)
   items         items    @relation(fields: [item_id], references: [item_id], onUpdate: NoAction)
+  central_warehouse central_warehouse? @relation(fields: [warehouse_id], references: [warehouse_id], onUpdate: NoAction)
   users         users?   @relation(fields: [moved_by], references: [user_id], onUpdate: NoAction)
 
   @@index([branch_id])

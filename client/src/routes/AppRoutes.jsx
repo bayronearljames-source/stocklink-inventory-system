@@ -19,6 +19,7 @@ import ClerkDashboard from '../pages/dashboard/ClerkDashboard';
 
 // Core Pages
 import ItemCatalog from '../pages/catalog/ItemCatalog';
+import CentralWarehouse from '../pages/warehouse/CentralWarehouse';
 import BranchManagement from '../pages/branches/BranchManagement';
 import SupplierManagement from '../pages/suppliers/SupplierManagement';
 import BranchStock from '../pages/stock/BranchStock';
@@ -67,6 +68,7 @@ export const AppRoutes = () => {
           <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/items" element={<ItemCatalog />} />
+            <Route path="/central-warehouse" element={<CentralWarehouse />} />
             <Route path="/branches" element={<BranchManagement />} />
             <Route path="/suppliers" element={<SupplierManagement />} />
             <Route path="/audit-logs" element={<AuditLogs />} />
