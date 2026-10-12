@@ -1,4 +1,22 @@
 require("dotenv").config();
+
+const databaseEnvironment = process.env.DB_ENVIRONMENT || "unlabelled";
+try {
+  const databaseUrl = new URL(process.env.DATABASE_URL);
+  const directProjectRef = databaseUrl.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i)?.[1];
+  const poolerUserSuffix = decodeURIComponent(databaseUrl.username).split(".").at(-1);
+  const poolerProjectRef = /^[a-z0-9]{20}$/i.test(poolerUserSuffix) ? poolerUserSuffix : null;
+  const databaseTarget = directProjectRef || poolerProjectRef || databaseUrl.hostname;
+  console.log(`[database] environment=${databaseEnvironment}; target=${databaseTarget}`);
+  if (databaseEnvironment === "production") {
+    console.warn("[database] PRODUCTION database selected; verify before making changes.");
+  } else if (databaseEnvironment === "unlabelled") {
+    console.warn("[database] DB_ENVIRONMENT is not set; database target is not labelled.");
+  }
+} catch {
+  console.warn("[database] DATABASE_URL is missing or invalid; verify the app's database configuration.");
+}
+
 const express = require("express");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
@@ -357,6 +375,110 @@ app.delete(
   },
 );
 
+// Central warehouses and their inventory are visible to administrators only.
+app.get("/api/warehouses", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const warehouses = await prisma.central_warehouse.findMany({
+      orderBy: { warehouse_id: "asc" },
+    });
+    res.json(warehouses);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load warehouses" });
+  }
+});
+
+app.get("/api/central-stock", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const where = {};
+    if (req.query.warehouse_id !== undefined) {
+      const warehouseId = Number(req.query.warehouse_id);
+      if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+        return res.status(400).json({ error: "warehouse_id must be a positive integer" });
+      }
+      where.warehouse_id = warehouseId;
+    }
+
+    const stock = await prisma.central_stock.findMany({
+      where,
+      include: { central_warehouse: true, items: true },
+      orderBy: [{ warehouse_id: "asc" }, { item_id: "asc" }],
+    });
+    res.json(stock);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load central stock" });
+  }
+});
+
+app.post("/api/central-stock", requireAuth, requireRole("admin"), async (req, res) => {
+  const { warehouse_id, item_id, quantity: rawQuantity } = req.body ?? {};
+  const warehouseId = Number(warehouse_id);
+  const itemId = Number(item_id);
+  const quantity = Number(rawQuantity);
+
+  if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+    return res.status(400).json({ error: "warehouse_id must be a positive integer" });
+  }
+  if (!Number.isInteger(itemId) || itemId <= 0) {
+    return res.status(400).json({ error: "item_id must be a positive integer" });
+  }
+  if (rawQuantity === undefined || rawQuantity === null || rawQuantity === "" || !Number.isInteger(quantity) || quantity < 0 || quantity > 2147483647) {
+    return res.status(400).json({ error: "quantity must be an integer between 0 and 2147483647" });
+  }
+
+  try {
+    const stock = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.user_id', ${String(req.user.id)}, true)`;
+      return tx.central_stock.create({
+        data: { warehouse_id: warehouseId, item_id: itemId, quantity },
+        include: { central_warehouse: true, items: true },
+      });
+    });
+    res.status(201).json(stock);
+  } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(409).json({ error: "Central stock already exists for this warehouse and item" });
+    }
+    if (error.code === "P2003") {
+      return res.status(400).json({ error: "Warehouse or item does not exist" });
+    }
+    res.status(500).json({ error: "Failed to create central stock record" });
+  }
+});
+
+app.put("/api/central-stock/:warehouse_id/:item_id", requireAuth, requireRole("admin"), async (req, res) => {
+  const warehouseId = Number(req.params.warehouse_id);
+  const itemId = Number(req.params.item_id);
+  const { quantity: rawQuantity } = req.body ?? {};
+  const quantity = Number(rawQuantity);
+
+  if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+    return res.status(400).json({ error: "warehouse_id must be a positive integer" });
+  }
+  if (!Number.isInteger(itemId) || itemId <= 0) {
+    return res.status(400).json({ error: "item_id must be a positive integer" });
+  }
+  if (rawQuantity === undefined || rawQuantity === null || rawQuantity === "" || !Number.isInteger(quantity) || quantity < 0 || quantity > 2147483647) {
+    return res.status(400).json({ error: "quantity must be an integer between 0 and 2147483647" });
+  }
+
+  try {
+    const stock = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.user_id', ${String(req.user.id)}, true)`;
+      return tx.central_stock.update({
+        where: { warehouse_id_item_id: { warehouse_id: warehouseId, item_id: itemId } },
+        data: { quantity },
+        include: { central_warehouse: true, items: true },
+      });
+    });
+    res.json(stock);
+  } catch (error) {
+    if (error.code === "P2025") {
+      return res.status(404).json({ error: "Central stock record not found" });
+    }
+    res.status(500).json({ error: "Failed to update central stock" });
+  }
+});
+
 // Get restock requests — admin sees all, everyone else sees only their branch
 app.get("/api/restock-requests", requireAuth, async (req, res) => {
   try {
@@ -408,10 +530,13 @@ app.post(
   async (req, res) => {
     try {
       const requestId = Number(req.params.id);
-      const warehouseId = Number(req.body.warehouse_id);
+      const warehouseId = Number(req.body?.warehouse_id);
 
-      if (!warehouseId) {
-        return res.status(400).json({ error: "warehouse_id is required" });
+      if (!Number.isInteger(requestId) || requestId <= 0) {
+        return res.status(400).json({ error: "Request ID must be a positive integer" });
+      }
+      if (!Number.isInteger(warehouseId) || warehouseId <= 0) {
+        return res.status(400).json({ error: "warehouse_id must be a positive integer" });
       }
 
       await prisma.$executeRaw`CALL sp_fulfill_restock_request(${requestId}::integer, ${warehouseId}::integer, ${req.user.id}::integer)`;

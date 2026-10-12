@@ -1,9 +1,11 @@
 const path = require('path');
 const dotenv = require('dotenv');
+const { validateTestEnvironment } = require('../../scripts/check-test-env');
 
 // Tests call cleanDatabase(), which deletes application rows. Require a dedicated
 // test environment so a missing .env.test cannot fall back to the root .env.
 const testEnvPath = path.resolve(__dirname, '../../.env.test');
+validateTestEnvironment();
 const testEnv = dotenv.config({ path: testEnvPath, override: true });
 if (testEnv.error) {
   throw new Error('Missing .env.test. Create it with a disposable test database before running tests.');

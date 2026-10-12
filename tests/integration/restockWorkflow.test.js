@@ -187,6 +187,77 @@ describe('Restock Request Workflow', () => {
       expect(movement.quantity).toBe(75);
       expect(movement.movement_type).toBe('adjustment');
     });
+
+    it('should initialize missing branch stock and retain the source warehouse', async () => {
+      const item = await prisma.items.create({
+        data: {
+          item_name: 'Uninitialized Branch Stock Item',
+          category: 'Test',
+          unit_price: 12.5,
+          unit_of_measure: 'pcs',
+        },
+      });
+      await prisma.central_stock.create({
+        data: {
+          warehouse_id: testData.warehouse.warehouse_id,
+          item_id: item.item_id,
+          quantity: 25,
+        },
+      });
+      const request = await prisma.restock_requests.create({
+        data: {
+          branch_id: testData.branch.branch_id,
+          item_id: item.item_id,
+          requested_qty: 10,
+          status: 'pending',
+        },
+      });
+
+      expect(await prisma.branch_stock.findUnique({
+        where: {
+          branch_id_item_id: {
+            branch_id: testData.branch.branch_id,
+            item_id: item.item_id,
+          },
+        },
+      })).toBeNull();
+
+      await prisma.$executeRaw`
+        CALL sp_fulfill_restock_request(
+          ${request.request_id}::integer,
+          ${testData.warehouse.warehouse_id}::integer,
+          ${testData.users.admin.user_id}::integer
+        )
+      `;
+
+      const branchStock = await prisma.branch_stock.findUnique({
+        where: {
+          branch_id_item_id: {
+            branch_id: testData.branch.branch_id,
+            item_id: item.item_id,
+          },
+        },
+      });
+      const centralStock = await prisma.central_stock.findUnique({
+        where: {
+          warehouse_id_item_id: {
+            warehouse_id: testData.warehouse.warehouse_id,
+            item_id: item.item_id,
+          },
+        },
+      });
+      const movement = await prisma.stock_movements.findFirst({
+        where: {
+          branch_id: testData.branch.branch_id,
+          item_id: item.item_id,
+          movement_type: 'adjustment',
+        },
+      });
+
+      expect(branchStock.quantity).toBe(10);
+      expect(centralStock.quantity).toBe(15);
+      expect(movement.warehouse_id).toBe(testData.warehouse.warehouse_id);
+    });
   });
 
   describe('Restock Request Rejection', () => {
