@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   FileBarChart,
+  Users,
 } from 'lucide-react';
 import { ROLES } from './constants';
 
@@ -81,6 +82,14 @@ export const NAV_ITEMS = [
   },
 
   // System Administration & Data
+  {
+    id: 'users',
+    label: 'User Management',
+    path: '/users',
+    icon: Users,
+    roles: [ROLES.ADMIN],
+    category: 'Administration',
+  },
   {
     id: 'branches',
     label: 'Branch Locations',
