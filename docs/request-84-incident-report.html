@@ -1,0 +1,1289 @@
+<title>Request #84 Database Incident Report</title>
+
+<style>
+/* Design tokens */
+:root {
+  /* Layout: Clean document with sidebar navigation and tabbed content */
+  --bg: #ffffff;
+  --surface: #f8f9fa;
+  --border: #e1e4e8;
+  --text: #24292e;
+  --text-muted: #586069;
+  --text-light: #6a737d;
+  --accent: #0366d6;
+  --accent-hover: #0257c7;
+  --warning: #d73a49;
+  --warning-bg: #fff5f5;
+  --success: #28a745;
+  --success-bg: #f0fff4;
+  --info: #6f42c1;
+  --info-bg: #f3f0ff;
+  --code-bg: #f6f8fa;
+  --shadow: rgba(27, 31, 35, 0.04);
+
+  /* Typography */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --text-light: #6e7681;
+    --accent: #58a6ff;
+    --accent-hover: #79b8ff;
+    --warning: #f85149;
+    --warning-bg: #2d1517;
+    --success: #3fb950;
+    --success-bg: #0f2818;
+    --info: #a371f7;
+    --info-bg: #1c1229;
+    --code-bg: #161b22;
+    --shadow: rgba(1, 4, 9, 0.3);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #8b949e;
+  --text-light: #6e7681;
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --warning: #f85149;
+  --warning-bg: #2d1517;
+  --success: #3fb950;
+  --success-bg: #0f2818;
+  --info: #a371f7;
+  --info-bg: #1c1229;
+  --code-bg: #161b22;
+  --shadow: rgba(1, 4, 9, 0.3);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding-block: 0;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar h1 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.sidebar .subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.nav-section {
+  margin-bottom: 20px;
+}
+
+.nav-section h2 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.nav-section a {
+  display: block;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.nav-section a:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.nav-section a.active {
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.status-badge.critical {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.status-badge.resolved {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.main {
+  padding: 48px;
+  max-width: 1200px;
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 24px 16px;
+  }
+}
+
+.header {
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-wrap: balance;
+}
+
+.meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-item strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.alert {
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 32px;
+  border-left: 4px solid;
+}
+
+.alert-warning {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+}
+
+.alert-info {
+  background: var(--info-bg);
+  border-color: var(--info);
+}
+
+.alert-success {
+  background: var(--success-bg);
+  border-color: var(--success);
+}
+
+.alert p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert strong {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+section {
+  margin-bottom: 48px;
+}
+
+section h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+section h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+section p {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+}
+
+ul, ol {
+  margin-left: 24px;
+  margin-bottom: 16px;
+}
+
+li {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+li strong {
+  color: var(--text);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.card h4 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 600px;
+}
+
+thead {
+  background: var(--surface);
+}
+
+th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  border-bottom: 2px solid var(--border);
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+tbody tr:hover {
+  background: var(--surface);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 2px 6px;
+  background: var(--code-bg);
+  border-radius: 3px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  display: block;
+  line-height: 1.5;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: white;
+}
+
+.action-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.checklist {
+  list-style: none;
+  margin-left: 0;
+}
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.checklist li::before {
+  content: '□';
+  font-size: 18px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.checklist li.done::before {
+  content: '✓';
+  color: var(--success);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.highlight {
+  background: var(--info-bg);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  color: var(--info);
+}
+</style>
+
+<div class="container">
+  <aside class="sidebar">
+    <h1>StockLink</h1>
+    <p class="subtitle">Incident Report #84</p>
+
+    <div class="status-badge critical">
+      <span class="status-indicator"></span>
+      Under Review
+    </div>
+
+    <nav>
+      <div class="nav-section">
+        <h2>Overview</h2>
+        <a href="#summary" class="active">Summary</a>
+        <a href="#what-happened">What Happened</a>
+        <a href="#impact">Impact Analysis</a>
+      </div>
+
+      <div class="nav-section">
+        <h2>Investigation</h2>
+        <a href="#verification">Verification Steps</a>
+        <a href="#tables">Tables Modified</a>
+        <a href="#queries">SQL Queries</a>
+      </div>
+
+      <div class="nav-section">
+        <h2>Resolution</h2>
+        <a href="#decision">Decision Matrix</a>
+        <a href="#reversal">Reversal Procedure</a>
+        <a href="#prevention">Prevention</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="header">
+      <h1>Request #84 Database Incident Report</h1>
+      <div class="meta">
+        <div class="meta-item">
+          <strong>Date:</strong> October 12, 2026
+        </div>
+        <div class="meta-item">
+          <strong>Status:</strong> <span class="highlight">Production Data Modified</span>
+        </div>
+        <div class="meta-item">
+          <strong>Severity:</strong> High
+        </div>
+      </div>
+    </header>
+
+    <div class="alert alert-warning">
+      <strong>⚠️ Production Database Warning</strong>
+      <p>Restock request #84 was fulfilled against the <strong>production Supabase database</strong> during local development testing. This report documents what happened, what was modified, and safe next steps for the team.</p>
+    </div>
+
+    <section id="summary">
+      <h2>Executive Summary</h2>
+
+      <p>During local development and manual restock testing, Bayron's local backend fulfilled restock request #84. Investigation confirms the following:</p>
+
+      <div class="card">
+        <h4>✅ Confirmed Facts</h4>
+        <ul>
+          <li><strong>Request #84 was fulfilled against the production database</strong> — the local <code>.env</code> file pointed to Supabase main (production)</li>
+          <li><strong>No environment isolation</strong> — the app has no <code>NODE_ENV</code> switching logic; it uses whichever database is in <code>.env</code></li>
+          <li><strong>5 tables were modified</strong> — changes were made atomically via stored procedure</li>
+          <li><strong>Data appears legitimate</strong> — item "Ahmar", 100 units to a branch, central stock reduced to 0</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4>🎯 Root Cause</h4>
+        <p>The StockLink backend loads environment variables via <code>dotenv.config()</code> with no path option, meaning it always loads <code>.env</code> from the project root. There is no conditional logic to check <code>NODE_ENV</code> or switch between development and production databases. Running <code>node server.js</code> or calling the API directly uses whatever <code>DATABASE_URL</code> is in <code>.env</code> — in Bayron's case, production.</p>
+      </div>
+
+      <div class="card">
+        <h4>📊 Data Modified</h4>
+        <ul>
+          <li><strong>Item:</strong> Ahmar (via restock_requests.item_id)</li>
+          <li><strong>Quantity:</strong> 100 units</li>
+          <li><strong>Branch:</strong> One branch received the stock (restock_requests.branch_id)</li>
+          <li><strong>Central stock:</strong> Now shows 0 quantity for item Ahmar</li>
+          <li><strong>Branch stock:</strong> Now shows 100 quantity for item Ahmar at target branch</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="what-happened">
+      <h2>What Happened</h2>
+
+      <h3>Timeline of Events</h3>
+
+      <div class="card">
+        <h4>Development Environment Setup</h4>
+        <ol>
+          <li>Bayron's local repository had <code>.env</code> pointing to production Supabase</li>
+          <li><code>.env.test</code> was missing on their machine</li>
+          <li>Bayron's AI assistant was working on Central Warehouse and fulfillment features on branch <code>codex/warehouse-fulfillment</code></li>
+          <li>The fulfillment code changes were uncommitted and not yet available in other checkouts</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>The Fulfillment</h4>
+        <ol>
+          <li>A manual restock test was performed (likely via direct API call or Postman)</li>
+          <li>Endpoint called: <code>POST /api/restock-requests/84/fulfill</code></li>
+          <li>Backend loaded <code>.env</code> → connected to production database</li>
+          <li>Stored procedure <code>sp_fulfill_restock_request</code> executed successfully</li>
+          <li>Request #84 status changed to <code>fulfilled</code>, stock moved from central to branch</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>Discovery</h4>
+        <ol>
+          <li>Bayron's AI noticed request #84 showed <code>status='fulfilled'</code> in production</li>
+          <li>Read-only query confirmed: item Ahmar, central quantity 0, branch quantity 100</li>
+          <li>Uncertainty about which database the local backend used at the time</li>
+          <li>Paused all testing and raised the incident</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="impact">
+      <h2>Impact Analysis</h2>
+
+      <h3>How the Database Connection Works</h3>
+
+      <div class="card">
+        <h4>Connection Chain</h4>
+        <pre><code>server.js
+  ↓
+require('dotenv').config()  // No path option → loads .env from root
+  ↓
+new PrismaClient()  // Uses process.env.DATABASE_URL
+  ↓
+Connects to whichever database is in .env</code></pre>
+      </div>
+
+      <div class="card">
+        <h4>Key Findings</h4>
+        <ul>
+          <li><code>index.js</code> line 1: <code>require("dotenv").config()</code> with no path specification</li>
+          <li><strong>No <code>NODE_ENV</code> check or conditional loading</strong></li>
+          <li>Only Jest tests explicitly load <code>.env.test</code> via <code>tests/helpers/testSetup.js</code></li>
+          <li>All utility scripts (<code>scripts/*.js</code>) likely connect to production when run directly</li>
+          <li>All <code>.env*</code> files are properly gitignored</li>
+        </ul>
+      </div>
+
+      <h3>Conclusion</h3>
+
+      <div class="alert alert-info">
+        <strong>Verdict: Request #84 Hit Production</strong>
+        <p>There is no mechanism in the codebase that would have prevented this. The app uses whatever <code>DATABASE_URL</code> is in <code>.env</code>, period. Given Bayron's <code>.env</code> pointed to production, request #84 was fulfilled against the production database.</p>
+      </div>
+    </section>
+
+    <section id="verification">
+      <h2>Verification Steps (Read-Only)</h2>
+
+      <div class="alert alert-warning">
+        <strong>⚠️ Important</strong>
+        <p>Do NOT run tests, restart the app, connect to the database via scripts, change data, reverse the fulfillment, commit, or merge anything until the team has reviewed the impact. All steps below are read-only queries.</p>
+      </div>
+
+      <h3>Step A: Confirm Database Target</h3>
+
+      <p>Bayron should verify which database <code>.env</code> points to:</p>
+
+      <div class="card">
+        <h4>Option 1: Check in Supabase Dashboard (Safest)</h4>
+        <ol>
+          <li>Open the <strong>Production</strong> Supabase project in browser</li>
+          <li>Go to <strong>Table Editor</strong> → <code>restock_requests</code></li>
+          <li>Filter by <code>id = 84</code></li>
+          <li>Check if <code>status = 'fulfilled'</code></li>
+          <li><strong>If yes → confirmed production</strong></li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>Option 2: Check Hostname (No Credentials Exposed)</h4>
+        <pre><code># On Bayron's machine — don't share the output
+grep -o 'DATABASE_URL=.*@[^:]*' .env | sed 's/.*@/Host: /'
+
+# OR in PowerShell
+(Get-Content .env | Select-String 'DATABASE_URL') -replace '.*@([^:]+):.*','Host: $1'</code></pre>
+        <p>Compare the hostname to the production Supabase project URL. If they match → confirmed production.</p>
+      </div>
+    </section>
+
+    <section id="tables">
+      <h2>Tables Modified by Request #84</h2>
+
+      <p>The stored procedure <code>sp_fulfill_restock_request</code> performs these changes in a single atomic transaction:</p>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Table</th>
+              <th>Operation</th>
+              <th>What to Look For</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><code>restock_requests</code></td>
+              <td>UPDATE</td>
+              <td><code>status</code> → <code>'fulfilled'</code>, <code>fulfilled_at</code> timestamp set, <code>approved_by</code> user_id set</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><code>central_stock</code></td>
+              <td>UPDATE</td>
+              <td><code>quantity</code> <strong>decremented</strong> by requested amount (now 0 for Ahmar)</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><code>branch_stock</code></td>
+              <td>UPDATE</td>
+              <td><code>quantity</code> <strong>incremented</strong> by requested amount (now 100), <code>last_restocked_at</code> timestamp</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td><code>stock_movements</code></td>
+              <td>INSERT</td>
+              <td>New row: <code>movement_type='adjustment'</code>, <code>quantity=100</code>, <code>moved_by</code> = admin user_id</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td><code>audit_logs</code></td>
+              <td>INSERT (auto)</td>
+              <td>Triggered by <code>branch_stock</code> update — contains before/after JSON snapshots</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4>📝 Stored Procedure Details</h4>
+        <ul>
+          <li><strong>File:</strong> <code>migrations/006_fix_sp_movement_type.sql</code></li>
+          <li><strong>Signature:</strong> <code>sp_fulfill_restock_request(p_request_id INTEGER, p_warehouse_id INTEGER, p_approved_by INTEGER)</code></li>
+          <li><strong>Transaction:</strong> All 5 table changes happen atomically (all or nothing)</li>
+          <li><strong>Concurrency:</strong> Uses row-level locks (<code>FOR UPDATE</code>) to prevent double-fulfillment</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="queries">
+      <h2>SQL Queries for Investigation</h2>
+
+      <p>Run these <strong>read-only queries</strong> in the Supabase SQL Editor (Production project) to assess the impact:</p>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('query-request')">Request #84</button>
+        <button class="tab" onclick="switchTab('query-item')">Item Details</button>
+        <button class="tab" onclick="switchTab('query-stocks')">Stock Levels</button>
+        <button class="tab" onclick="switchTab('query-movements')">Movements</button>
+        <button class="tab" onclick="switchTab('query-audit')">Audit Trail</button>
+      </div>
+
+      <div id="query-request" class="tab-content active">
+        <h4>1. Check Request #84</h4>
+        <pre><code>-- Verify request was fulfilled
+SELECT
+  id,
+  item_id,
+  branch_id,
+  requested_qty,
+  status,
+  fulfilled_at,
+  approved_by,
+  created_at
+FROM restock_requests
+WHERE id = 84;</code></pre>
+      </div>
+
+      <div id="query-item" class="tab-content">
+        <h4>2. Get Item Name (Should be "Ahmar")</h4>
+        <pre><code>-- Get the item details
+SELECT
+  i.id,
+  i.name,
+  i.category,
+  i.sku
+FROM items i
+WHERE i.id = (
+  SELECT item_id
+  FROM restock_requests
+  WHERE id = 84
+);</code></pre>
+      </div>
+
+      <div id="query-stocks" class="tab-content">
+        <h4>3. Check Central Stock (Should show quantity = 0)</h4>
+        <pre><code>-- Central stock for the item
+SELECT
+  cs.warehouse_id,
+  cs.item_id,
+  cs.quantity,
+  w.name as warehouse_name,
+  i.name as item_name
+FROM central_stock cs
+JOIN central_warehouse w ON w.id = cs.warehouse_id
+JOIN items i ON i.id = cs.item_id
+WHERE cs.item_id = (
+  SELECT item_id
+  FROM restock_requests
+  WHERE id = 84
+);</code></pre>
+
+        <h4>4. Check Branch Stock (Should show quantity = 100)</h4>
+        <pre><code>-- Branch stock for the item
+SELECT
+  bs.branch_id,
+  bs.item_id,
+  bs.quantity,
+  bs.last_restocked_at,
+  b.name as branch_name,
+  i.name as item_name
+FROM branch_stock bs
+JOIN branches b ON b.id = bs.branch_id
+JOIN items i ON i.id = bs.item_id
+WHERE bs.item_id = (
+  SELECT item_id
+  FROM restock_requests
+  WHERE id = 84
+)
+  AND bs.branch_id = (
+    SELECT branch_id
+    FROM restock_requests
+    WHERE id = 84
+  );</code></pre>
+      </div>
+
+      <div id="query-movements" class="tab-content">
+        <h4>5. Find Stock Movement Record</h4>
+        <pre><code>-- Find the fulfillment movement record
+SELECT
+  sm.*,
+  b.name as branch_name,
+  i.name as item_name,
+  u.username as moved_by_user
+FROM stock_movements sm
+JOIN branches b ON b.id = sm.branch_id
+JOIN items i ON i.id = sm.item_id
+LEFT JOIN users u ON u.id = sm.moved_by
+WHERE sm.item_id = (
+  SELECT item_id
+  FROM restock_requests
+  WHERE id = 84
+)
+  AND sm.movement_type = 'adjustment'
+  AND sm.moved_at >= (
+    SELECT fulfilled_at - interval '5 minutes'
+    FROM restock_requests
+    WHERE id = 84
+  )
+ORDER BY sm.moved_at DESC;</code></pre>
+      </div>
+
+      <div id="query-audit" class="tab-content">
+        <h4>6. Find Audit Trail</h4>
+        <pre><code>-- Find the automatic audit log entry
+SELECT
+  al.*,
+  al.old_value->>'quantity' as old_quantity,
+  al.new_value->>'quantity' as new_quantity
+FROM audit_logs al
+WHERE al.table_name = 'branch_stock'
+  AND al.record_id = (
+    SELECT item_id
+    FROM restock_requests
+    WHERE id = 84
+  )
+  AND al.changed_at >= (
+    SELECT fulfilled_at - interval '5 minutes'
+    FROM restock_requests
+    WHERE id = 84
+  )
+ORDER BY al.changed_at DESC;</code></pre>
+      </div>
+    </section>
+
+    <section id="decision">
+      <h2>Decision Matrix</h2>
+
+      <p>After running the verification queries, the team should decide based on whether the data is legitimate:</p>
+
+      <div class="card">
+        <h4>✅ Scenario A: Data is Legitimate</h4>
+        <p><strong>If:</strong> Item "Ahmar" actually needed restocking, quantity 100 is correct, and the target branch is correct</p>
+        <p><strong>Action:</strong></p>
+        <ul>
+          <li>Leave the fulfillment alone — the data is valid</li>
+          <li>Document it: "Request #84 fulfilled during development testing on [date]"</li>
+          <li>Move forward with implementing the prevention measures below</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4>⚠️ Scenario B: Data is Test/Garbage Data</h4>
+        <p><strong>If:</strong> The fulfillment was test data that should not have gone to production</p>
+        <p><strong>Action:</strong></p>
+        <div class="alert alert-warning">
+          <strong>⚠️ Do NOT manually reverse with UPDATE statements</strong>
+          <p>Manual SQL could leave inconsistent state (e.g., fixing branch_stock but forgetting stock_movements or audit_logs). Use the reversal stored procedure below instead.</p>
+        </div>
+        <ol>
+          <li><strong>Review the reversal stored procedure</strong> (see next section)</li>
+          <li><strong>Test it in a development/test environment first</strong></li>
+          <li><strong>Get full team approval</strong> before running it in production</li>
+          <li><strong>Execute the reversal:</strong> <code>CALL sp_reverse_restock_fulfillment(84, &lt;admin_user_id&gt;)</code></li>
+          <li><strong>Verify the reversal</strong> by re-running the verification queries</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="reversal">
+      <h2>Reversal Procedure (If Needed)</h2>
+
+      <div class="alert alert-warning">
+        <strong>⚠️ Use Only If Data is Invalid</strong>
+        <p>This stored procedure reverses a restock fulfillment safely. Test it in a non-production environment before running it in production.</p>
+      </div>
+
+      <h3>Create the Reversal Procedure</h3>
+
+      <pre><code>CREATE OR REPLACE PROCEDURE sp_reverse_restock_fulfillment(
+    p_request_id INTEGER,
+    p_reversed_by INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_branch_id INTEGER;
+    v_item_id INTEGER;
+    v_qty INTEGER;
+BEGIN
+    -- Get the fulfillment details
+    SELECT branch_id, item_id, requested_qty
+    INTO v_branch_id, v_item_id, v_qty
+    FROM restock_requests
+    WHERE request_id = p_request_id
+      AND status = 'fulfilled'
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Request % not found or not fulfilled', p_request_id;
+    END IF;
+
+    -- Reverse branch stock (decrement)
+    UPDATE branch_stock
+    SET quantity = quantity - v_qty
+    WHERE branch_id = v_branch_id
+      AND item_id = v_item_id;
+
+    -- Reverse central stock (increment)
+    UPDATE central_stock
+    SET quantity = quantity + v_qty
+    WHERE item_id = v_item_id;
+
+    -- Insert corrective stock movement (negative quantity)
+    INSERT INTO stock_movements (
+        branch_id,
+        item_id,
+        moved_by,
+        movement_type,
+        quantity,
+        moved_at
+    )
+    VALUES (
+        v_branch_id,
+        v_item_id,
+        p_reversed_by,
+        'adjustment',
+        -v_qty,
+        NOW()
+    );
+
+    -- Reset restock request to pending
+    UPDATE restock_requests
+    SET status = 'pending',
+        fulfilled_at = NULL,
+        approved_by = NULL
+    WHERE request_id = p_request_id;
+
+    RAISE NOTICE 'Request % reversed successfully', p_request_id;
+END;
+$$;</code></pre>
+
+      <h3>Execute the Reversal</h3>
+
+      <pre><code>-- Replace &lt;admin_user_id&gt; with the actual admin user_id
+CALL sp_reverse_restock_fulfillment(84, &lt;admin_user_id&gt;);</code></pre>
+
+      <h3>Verify the Reversal</h3>
+
+      <p>After running the procedure, re-run the verification queries to confirm:</p>
+
+      <ul class="checklist">
+        <li><code>restock_requests</code> id=84 shows <code>status='pending'</code></li>
+        <li><code>central_stock</code> quantity incremented back (should be 100)</li>
+        <li><code>branch_stock</code> quantity decremented back (should be 0)</li>
+        <li><code>stock_movements</code> has a new row with <code>quantity=-100</code> and <code>movement_type='adjustment'</code></li>
+        <li><code>audit_logs</code> has a new entry for the branch_stock reversal</li>
+      </ul>
+    </section>
+
+    <section id="prevention">
+      <h2>Preventing Future Incidents</h2>
+
+      <p>To prevent this from happening again, implement these safety guards:</p>
+
+      <h3>1. Startup Database Warning</h3>
+
+      <div class="card">
+        <h4>Add to <code>index.js</code> (after dotenv.config())</h4>
+        <pre><code>// After require('dotenv').config()
+const dbUrl = new URL(process.env.DATABASE_URL);
+console.log('🗄️  Database host:', dbUrl.hostname);
+
+if (dbUrl.hostname.includes('your-production-project')) {
+    console.warn('⚠️  WARNING: Connected to PRODUCTION database!');
+    console.warn('⚠️  Destructive operations will affect live data.');
+}</code></pre>
+        <p><strong>Effect:</strong> Developers see which database they're connected to every time the server starts.</p>
+      </div>
+
+      <h3>2. Test Isolation Check</h3>
+
+      <div class="card">
+        <h4>Create <code>scripts/check-test-env.js</code></h4>
+        <pre><code>const fs = require('fs');
+const path = require('path');
+
+const envTestPath = path.join(__dirname, '../.env.test');
+
+if (!fs.existsSync(envTestPath)) {
+    console.error('❌ ERROR: .env.test file not found!');
+    console.error('Tests require a separate test database.');
+    console.error('Copy .env.test.example to .env.test and configure it.');
+    process.exit(1);
+}
+
+console.log('✅ Test environment file found');
+</code></pre>
+
+        <h4>Add to <code>package.json</code></h4>
+        <pre><code>"scripts": {
+  "pretest": "node scripts/check-test-env.js",
+  "test": "jest"
+}</code></pre>
+        <p><strong>Effect:</strong> Tests fail immediately if <code>.env.test</code> is missing, preventing accidental test runs against production.</p>
+      </div>
+
+      <h3>3. Environment Label Variable</h3>
+
+      <div class="card">
+        <h4>Add to <code>.env</code></h4>
+        <pre><code>DB_ENVIRONMENT=production</code></pre>
+
+        <h4>Add to <code>.env.test</code></h4>
+        <pre><code>DB_ENVIRONMENT=test</code></pre>
+
+        <h4>Add validation in critical routes (e.g., fulfillment)</h4>
+        <pre><code>// In fulfillment route
+if (process.env.DB_ENVIRONMENT === 'production') {
+    // Log the action for audit
+    console.log('⚠️  Production fulfillment:', {
+        requestId,
+        userId: req.user.id,
+        timestamp: new Date().toISOString()
+    });
+
+    // Optional: Require extra confirmation
+    // if (!req.body.confirm_production) {
+    //     return res.status(400).json({
+    //         error: 'Production operation requires confirmation'
+    //     });
+    // }
+}</code></pre>
+        <p><strong>Effect:</strong> Critical operations are aware of the environment and can add extra safeguards in production.</p>
+      </div>
+
+      <h3>Implementation Checklist</h3>
+
+      <ul class="checklist">
+        <li>Add startup database warning to <code>index.js</code></li>
+        <li>Create <code>scripts/check-test-env.js</code></li>
+        <li>Add <code>pretest</code> script to <code>package.json</code></li>
+        <li>Add <code>DB_ENVIRONMENT</code> to <code>.env</code> and <code>.env.test</code></li>
+        <li>Update <code>.env.example</code> with <code>DB_ENVIRONMENT=development</code></li>
+        <li>Test all three safety guards in development</li>
+        <li>Document the new safety measures in <code>README.md</code></li>
+        <li>Share updated <code>.env.example</code> with the team</li>
+      </ul>
+
+      <div class="action-group">
+        <button class="btn btn-primary" onclick="copyChecklist()">Copy Implementation Checklist</button>
+        <button class="btn" onclick="copyPreventionCode()">Copy Prevention Code</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Next Steps for the Team</h2>
+
+      <div class="card">
+        <h4>Immediate Actions</h4>
+        <ol>
+          <li><strong>Bayron verifies database target</strong> — use Step A verification queries</li>
+          <li><strong>Run all 6 SQL verification queries</strong> — assess the full impact</li>
+          <li><strong>Team meeting to review findings</strong> — decide Scenario A or B</li>
+          <li><strong>Document decision</strong> — record what was decided and why</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>If Data is Legitimate (Scenario A)</h4>
+        <ol>
+          <li>Document the incident in project notes</li>
+          <li>Implement the 3 prevention measures above</li>
+          <li>Continue with feature development</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>If Data is Invalid (Scenario B)</h4>
+        <ol>
+          <li>Create reversal procedure in test database first</li>
+          <li>Test the reversal with a test fulfillment</li>
+          <li>Get team approval for production reversal</li>
+          <li>Execute reversal in production</li>
+          <li>Verify reversal completed successfully</li>
+          <li>Implement the 3 prevention measures above</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h4>Long-Term Improvements</h4>
+        <ul>
+          <li>Consider using separate Supabase projects for dev/staging/production</li>
+          <li>Add environment-based connection pooling</li>
+          <li>Implement a pre-commit hook that checks for production URLs in <code>.env</code></li>
+          <li>Add a confirmation dialog in the frontend for critical production operations</li>
+          <li>Set up monitoring/alerts for unexpected production database writes</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer style="margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 14px;">
+      <p><strong>Document prepared by:</strong> Claude Code (StockLink Development Team)</p>
+      <p><strong>Last updated:</strong> October 12, 2026</p>
+      <p><strong>Status:</strong> Under team review — pending decision on request #84</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+function switchTab(tabId) {
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+  });
+
+  // Deactivate all tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Show selected tab content
+  document.getElementById(tabId).classList.add('active');
+
+  // Activate clicked tab
+  event.target.classList.add('active');
+}
+
+function copyChecklist() {
+  const checklist = `StockLink Safety Measures Implementation Checklist
+
+☐ Add startup database warning to index.js
+☐ Create scripts/check-test-env.js
+☐ Add "pretest" script to package.json
+☐ Add DB_ENVIRONMENT to .env and .env.test
+☐ Update .env.example with DB_ENVIRONMENT=development
+☐ Test all three safety guards in development
+☐ Document the new safety measures in README.md
+☐ Share updated .env.example with the team`;
+
+  navigator.clipboard.writeText(checklist).then(() => {
+    alert('✅ Checklist copied to clipboard!');
+  }).catch(() => {
+    alert('❌ Failed to copy. Please select and copy manually.');
+  });
+}
+
+function copyPreventionCode() {
+  const code = `// 1. Add to index.js after require('dotenv').config()
+const dbUrl = new URL(process.env.DATABASE_URL);
+console.log('🗄️  Database host:', dbUrl.hostname);
+if (dbUrl.hostname.includes('your-production-project')) {
+    console.warn('⚠️  WARNING: Connected to PRODUCTION database!');
+}
+
+// 2. Create scripts/check-test-env.js
+const fs = require('fs');
+const path = require('path');
+const envTestPath = path.join(__dirname, '../.env.test');
+if (!fs.existsSync(envTestPath)) {
+    console.error('❌ ERROR: .env.test file not found!');
+    process.exit(1);
+}
+
+// 3. Add to package.json
+"scripts": {
+  "pretest": "node scripts/check-test-env.js",
+  "test": "jest"
+}`;
+
+  navigator.clipboard.writeText(code).then(() => {
+    alert('✅ Prevention code copied to clipboard!');
+  }).catch(() => {
+    alert('❌ Failed to copy. Please select and copy manually.');
+  });
+}
+
+// Smooth scroll for navigation links
+document.querySelectorAll('nav a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const targetId = link.getAttribute('href').substring(1);
+    const targetElement = document.getElementById(targetId);
+
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Update active state
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+      link.classList.add('active');
+    }
+  });
+});
+
+// Update active nav link on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a');
+
+function updateActiveNav() {
+  let current = '';
+
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop;
+    const sectionHeight = section.clientHeight;
+    if (window.scrollY >= sectionTop - 100) {
+      current = section.getAttribute('id');
+    }
+  });
+
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === `#${current}`) {
+      link.classList.add('active');
+    }
+  });
+}
+
+window.addEventListener('scroll', updateActiveNav);
+</script>
