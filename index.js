@@ -563,6 +563,218 @@ app.post(
   },
 );
 
+// ========== USER MANAGEMENT ENDPOINTS (Admin Only) ==========
+
+// Get all users
+app.get('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const users = await prisma.users.findMany({
+      select: {
+        user_id: true,
+        username: true,
+        role: true,
+        branch_id: true,
+        created_at: true,
+        branches: {
+          select: {
+            branch_name: true,
+            location: true
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load users' });
+  }
+});
+
+// Create a new user
+app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
+  const bcrypt = require('bcrypt');
+  const { username, password, role, branch_id } = req.body;
+
+  // Validation
+  if (!username || !password || !role) {
+    return res.status(400).json({ error: 'Username, password, and role are required' });
+  }
+
+  if (!['admin', 'branch_manager', 'clerk'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be: admin, branch_manager, or clerk' });
+  }
+
+  if (username.length < 3 || username.length > 50) {
+    return res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  // Branch validation for non-admin roles
+  if ((role === 'branch_manager' || role === 'clerk') && !branch_id) {
+    return res.status(400).json({ error: 'Branch managers and clerks must be assigned to a branch' });
+  }
+
+  try {
+    // Hash password
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await prisma.users.create({
+      data: {
+        username,
+        password_hash,
+        role,
+        branch_id: branch_id ? Number(branch_id) : null
+      },
+      select: {
+        user_id: true,
+        username: true,
+        role: true,
+        branch_id: true,
+        created_at: true,
+        branches: {
+          select: {
+            branch_name: true,
+            location: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json(user);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'Branch does not exist' });
+    }
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// Update a user
+app.put('/api/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  const userId = Number(req.params.id);
+  const { role, branch_id } = req.body;
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
+
+  // Validation
+  if (role && !['admin', 'branch_manager', 'clerk'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Must be: admin, branch_manager, or clerk' });
+  }
+
+  // Branch validation for non-admin roles
+  if (role && (role === 'branch_manager' || role === 'clerk') && !branch_id) {
+    return res.status(400).json({ error: 'Branch managers and clerks must be assigned to a branch' });
+  }
+
+  try {
+    const updateData = {};
+    if (role !== undefined) updateData.role = role;
+    if (branch_id !== undefined) updateData.branch_id = branch_id ? Number(branch_id) : null;
+
+    const user = await prisma.users.update({
+      where: { user_id: userId },
+      data: updateData,
+      select: {
+        user_id: true,
+        username: true,
+        role: true,
+        branch_id: true,
+        created_at: true,
+        branches: {
+          select: {
+            branch_name: true,
+            location: true
+          }
+        }
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'Branch does not exist' });
+    }
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Reset user password
+app.put('/api/users/:id/password', requireAuth, requireRole('admin'), async (req, res) => {
+  const bcrypt = require('bcrypt');
+  const userId = Number(req.params.id);
+  const { password } = req.body;
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
+
+    await prisma.users.update({
+      where: { user_id: userId },
+      data: { password_hash }
+    });
+
+    res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// Delete a user
+app.delete('/api/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  const userId = Number(req.params.id);
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  }
+
+  // Prevent deleting yourself
+  if (userId === req.user.id) {
+    return res.status(400).json({ error: 'Cannot delete your own account' });
+  }
+
+  try {
+    await prisma.users.delete({
+      where: { user_id: userId }
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Cannot delete user: they have associated records (stock movements, restock requests, etc.)'
+      });
+    }
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// ========== END USER MANAGEMENT ENDPOINTS ==========
+
 app.post('/api/restock-requests/:id/reject', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const requestId = Number(req.params.id);
