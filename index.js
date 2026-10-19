@@ -250,6 +250,210 @@ app.delete(
   },
 );
 
+// ========== SUPPLIER-ITEM LINKING ENDPOINTS (Admin Only) ==========
+
+// Get all items linked to a supplier
+app.get("/api/suppliers/:id/items", requireAuth, async (req, res) => {
+  try {
+    const supplierId = Number(req.params.id);
+
+    if (!Number.isInteger(supplierId) || supplierId <= 0) {
+      return res.status(400).json({ error: 'Invalid supplier ID' });
+    }
+
+    const supplierItems = await prisma.supplier_items.findMany({
+      where: { supplier_id: supplierId },
+      include: {
+        items: true,
+        suppliers: true,
+      },
+    });
+
+    res.json(supplierItems);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load supplier items' });
+  }
+});
+
+// Get all suppliers for a specific item
+app.get("/api/items/:id/suppliers", requireAuth, async (req, res) => {
+  try {
+    const itemId = Number(req.params.id);
+
+    if (!Number.isInteger(itemId) || itemId <= 0) {
+      return res.status(400).json({ error: 'Invalid item ID' });
+    }
+
+    const itemSuppliers = await prisma.supplier_items.findMany({
+      where: { item_id: itemId },
+      include: {
+        items: true,
+        suppliers: true,
+      },
+    });
+
+    res.json(itemSuppliers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load item suppliers' });
+  }
+});
+
+// Link a supplier to an item (admin only)
+app.post("/api/supplier-items", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { supplier_id, item_id, unit_cost, lead_time_days, min_order_qty } = req.body;
+
+    // Validation
+    if (!supplier_id || !item_id || unit_cost === undefined || !lead_time_days) {
+      return res.status(400).json({
+        error: 'supplier_id, item_id, unit_cost, and lead_time_days are required'
+      });
+    }
+
+    if (!Number.isInteger(Number(supplier_id)) || Number(supplier_id) <= 0) {
+      return res.status(400).json({ error: 'Invalid supplier_id' });
+    }
+
+    if (!Number.isInteger(Number(item_id)) || Number(item_id) <= 0) {
+      return res.status(400).json({ error: 'Invalid item_id' });
+    }
+
+    if (Number(unit_cost) < 0) {
+      return res.status(400).json({ error: 'unit_cost must be non-negative' });
+    }
+
+    if (!Number.isInteger(Number(lead_time_days)) || Number(lead_time_days) < 0) {
+      return res.status(400).json({ error: 'lead_time_days must be a non-negative integer' });
+    }
+
+    if (min_order_qty !== undefined && (!Number.isInteger(Number(min_order_qty)) || Number(min_order_qty) < 1)) {
+      return res.status(400).json({ error: 'min_order_qty must be a positive integer' });
+    }
+
+    const supplierItem = await prisma.supplier_items.create({
+      data: {
+        supplier_id: Number(supplier_id),
+        item_id: Number(item_id),
+        unit_cost: Number(unit_cost),
+        lead_time_days: Number(lead_time_days),
+        min_order_qty: min_order_qty ? Number(min_order_qty) : 1,
+      },
+      include: {
+        items: true,
+        suppliers: true,
+      },
+    });
+
+    res.status(201).json(supplierItem);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'This supplier-item link already exists' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'Supplier or item does not exist' });
+    }
+    res.status(500).json({ error: 'Failed to create supplier-item link' });
+  }
+});
+
+// Update a supplier-item link (admin only)
+app.put(
+  "/api/supplier-items/:supplier_id/:item_id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const supplierId = Number(req.params.supplier_id);
+      const itemId = Number(req.params.item_id);
+      const { unit_cost, lead_time_days, min_order_qty } = req.body;
+
+      if (!Number.isInteger(supplierId) || supplierId <= 0) {
+        return res.status(400).json({ error: 'Invalid supplier_id' });
+      }
+
+      if (!Number.isInteger(itemId) || itemId <= 0) {
+        return res.status(400).json({ error: 'Invalid item_id' });
+      }
+
+      // Validation
+      if (unit_cost !== undefined && Number(unit_cost) < 0) {
+        return res.status(400).json({ error: 'unit_cost must be non-negative' });
+      }
+
+      if (lead_time_days !== undefined && (!Number.isInteger(Number(lead_time_days)) || Number(lead_time_days) < 0)) {
+        return res.status(400).json({ error: 'lead_time_days must be a non-negative integer' });
+      }
+
+      if (min_order_qty !== undefined && (!Number.isInteger(Number(min_order_qty)) || Number(min_order_qty) < 1)) {
+        return res.status(400).json({ error: 'min_order_qty must be a positive integer' });
+      }
+
+      const updateData = {};
+      if (unit_cost !== undefined) updateData.unit_cost = Number(unit_cost);
+      if (lead_time_days !== undefined) updateData.lead_time_days = Number(lead_time_days);
+      if (min_order_qty !== undefined) updateData.min_order_qty = Number(min_order_qty);
+
+      const updatedSupplierItem = await prisma.supplier_items.update({
+        where: {
+          supplier_id_item_id: {
+            supplier_id: supplierId,
+            item_id: itemId,
+          },
+        },
+        data: updateData,
+        include: {
+          items: true,
+          suppliers: true,
+        },
+      });
+
+      res.json(updatedSupplierItem);
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Supplier-item link not found' });
+      }
+      res.status(500).json({ error: 'Failed to update supplier-item link' });
+    }
+  },
+);
+
+// Delete a supplier-item link (admin only)
+app.delete(
+  "/api/supplier-items/:supplier_id/:item_id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const supplierId = Number(req.params.supplier_id);
+      const itemId = Number(req.params.item_id);
+
+      if (!Number.isInteger(supplierId) || supplierId <= 0) {
+        return res.status(400).json({ error: 'Invalid supplier_id' });
+      }
+
+      if (!Number.isInteger(itemId) || itemId <= 0) {
+        return res.status(400).json({ error: 'Invalid item_id' });
+      }
+
+      await prisma.supplier_items.delete({
+        where: {
+          supplier_id_item_id: {
+            supplier_id: supplierId,
+            item_id: itemId,
+          },
+        },
+      });
+
+      res.json({ message: 'Supplier-item link deleted successfully' });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return res.status(404).json({ error: 'Supplier-item link not found' });
+      }
+      res.status(500).json({ error: 'Failed to delete supplier-item link' });
+    }
+  },
+);
+
 // Get branch stock — admin sees all branches, everyone else sees only their own
 app.get("/api/branch-stock", requireAuth, async (req, res) => {
   try {
