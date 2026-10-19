@@ -4,6 +4,9 @@ import { ROLES } from "../../utils/constants";
 import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import {
   ClipboardList,
@@ -45,6 +48,7 @@ const STATUS_BADGE = {
 export const RestockRequests = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === ROLES.ADMIN;
+  const toast = useToast();
 
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,8 +61,10 @@ export const RestockRequests = () => {
   const [warehouses, setWarehouses] = useState([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [warehouseError, setWarehouseError] = useState(null);
-  const [actionError, setActionError] = useState(null);
-  const [actionSuccess, setActionSuccess] = useState("");
+
+  // Confirmation dialog states
+  const [fulfillDialog, setFulfillDialog] = useState({ isOpen: false, request: null });
+  const [rejectDialog, setRejectDialog] = useState({ isOpen: false, request: null });
 
   const loadRequests = useCallback(async () => {
     setIsLoading(true);
@@ -75,10 +81,11 @@ export const RestockRequests = () => {
       setRequests(data);
     } catch (err) {
       setError(err.message);
+      toast.error(`Failed to load restock requests: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadRequests();
@@ -94,46 +101,76 @@ export const RestockRequests = () => {
         setSelectedWarehouseId((current) => current || String(data[0]?.warehouse_id ?? ""));
       })
       .catch((err) => {
-        if (isMounted) setWarehouseError(err.message);
+        if (isMounted) {
+          setWarehouseError(err.message);
+          toast.error(`Failed to load warehouses: ${err.message}`);
+        }
       });
     return () => { isMounted = false; };
-  }, [isAdmin]);
+  }, [isAdmin, toast]);
 
-  // POST /api/restock-requests/:id/reject — no extra body params needed
-  const handleReject = async (requestId) => {
-    setRejectingId(requestId);
-    setActionError(null);
-    setActionSuccess("");
+  // Open confirmation dialogs
+  const openFulfillDialog = (request) => {
+    if (!selectedWarehouseId) {
+      toast.warning("Please select a central warehouse before fulfilling a request");
+      return;
+    }
+    setFulfillDialog({ isOpen: true, request });
+  };
+
+  const openRejectDialog = (request) => {
+    setRejectDialog({ isOpen: true, request });
+  };
+
+  const closeFulfillDialog = () => {
+    setFulfillDialog({ isOpen: false, request: null });
+  };
+
+  const closeRejectDialog = () => {
+    setRejectDialog({ isOpen: false, request: null });
+  };
+
+  // Confirm fulfill action
+  const handleFulfillConfirm = async () => {
+    const { request } = fulfillDialog;
+    if (!request) return;
+
+    setFulfillingId(request.request_id);
     try {
-      await apiClient.post(`/restock-requests/${requestId}/reject`, {});
-      setActionSuccess(`Request #${requestId} rejected.`);
-      // Refresh so the row moves to the Rejected tab
+      await apiClient.post(`/restock-requests/${request.request_id}/fulfill`, {
+        warehouse_id: Number(selectedWarehouseId),
+      });
+
+      const warehouseName = warehouses.find(w => String(w.warehouse_id) === selectedWarehouseId)?.warehouse_name || "warehouse";
+      toast.success(`Request #${request.request_id} fulfilled from ${warehouseName}`);
+
       await loadRequests();
+      closeFulfillDialog();
     } catch (err) {
-      setActionError(err.message);
+      toast.error(`Failed to fulfill request: ${err.message}`);
+      closeFulfillDialog();
     } finally {
-      setRejectingId(null);
+      setFulfillingId(null);
     }
   };
 
-  const handleFulfill = async (requestId) => {
-    if (!selectedWarehouseId) {
-      setActionError("Select a central warehouse before fulfilling a request.");
-      return;
-    }
-    setFulfillingId(requestId);
-    setActionError(null);
-    setActionSuccess("");
+  // Confirm reject action
+  const handleRejectConfirm = async () => {
+    const { request } = rejectDialog;
+    if (!request) return;
+
+    setRejectingId(request.request_id);
     try {
-      await apiClient.post(`/restock-requests/${requestId}/fulfill`, {
-        warehouse_id: Number(selectedWarehouseId),
-      });
-      setActionSuccess(`Request #${requestId} fulfilled from the selected warehouse.`);
+      await apiClient.post(`/restock-requests/${request.request_id}/reject`, {});
+      toast.success(`Request #${request.request_id} rejected`);
+
       await loadRequests();
+      closeRejectDialog();
     } catch (err) {
-      setActionError(err.message);
+      toast.error(`Failed to reject request: ${err.message}`);
+      closeRejectDialog();
     } finally {
-      setFulfillingId(null);
+      setRejectingId(null);
     }
   };
 
@@ -142,6 +179,10 @@ export const RestockRequests = () => {
 
   // Dynamic tab counts from real data
   const countFor = (key) => requests.filter((r) => r.status === key).length;
+
+  const selectedWarehouseName = warehouses.find(
+    w => String(w.warehouse_id) === selectedWarehouseId
+  )?.warehouse_name || "selected warehouse";
 
   return (
     <div>
@@ -160,20 +201,6 @@ export const RestockRequests = () => {
           </span>
         }
       />
-
-      {/* Feedback banners */}
-      {actionSuccess && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          {actionSuccess}
-        </div>
-      )}
-      {actionError && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
-          <XCircle className="w-4 h-4 shrink-0" />
-          {actionError}
-        </div>
-      )}
 
       {/* Fulfillment requires an administrator-selected source warehouse. */}
       {isAdmin && (
@@ -221,11 +248,7 @@ export const RestockRequests = () => {
           ))}
         </div>
 
-        {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Loading requests…
-          </div>
-        )}
+        {isLoading && <LoadingOverlay message="Loading requests…" />}
 
         {!isLoading && error && (
           <div className="py-10 text-center text-sm text-rose-600">
@@ -304,7 +327,7 @@ export const RestockRequests = () => {
                           size="sm"
                           icon={fulfillingId === req.request_id ? Loader2 : Zap}
                           disabled={!selectedWarehouseId || fulfillingId === req.request_id || rejectingId === req.request_id}
-                          onClick={() => handleFulfill(req.request_id)}
+                          onClick={() => openFulfillDialog(req)}
                         >
                           {fulfillingId === req.request_id ? "Fulfilling…" : "Fulfill"}
                         </Button>
@@ -315,7 +338,7 @@ export const RestockRequests = () => {
                             rejectingId === req.request_id ? Loader2 : XCircle
                           }
                           disabled={rejectingId === req.request_id || fulfillingId === req.request_id}
-                          onClick={() => handleReject(req.request_id)}
+                          onClick={() => openRejectDialog(req)}
                         >
                           {rejectingId === req.request_id
                             ? "Rejecting…"
@@ -330,6 +353,32 @@ export const RestockRequests = () => {
           </div>
         )}
       </Card>
+
+      {/* Fulfill Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={fulfillDialog.isOpen}
+        onClose={closeFulfillDialog}
+        onConfirm={handleFulfillConfirm}
+        title="Fulfill Restock Request?"
+        message={`This will fulfill request #${fulfillDialog.request?.request_id} for ${fulfillDialog.request?.requested_qty} units of "${fulfillDialog.request?.items?.item_name}" to ${fulfillDialog.request?.branches?.branch_name} from ${selectedWarehouseName}.`}
+        confirmText="Fulfill Request"
+        cancelText="Cancel"
+        variant="success"
+        isLoading={fulfillingId === fulfillDialog.request?.request_id}
+      />
+
+      {/* Reject Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={rejectDialog.isOpen}
+        onClose={closeRejectDialog}
+        onConfirm={handleRejectConfirm}
+        title="Reject Restock Request?"
+        message={`Are you sure you want to reject request #${rejectDialog.request?.request_id} for ${rejectDialog.request?.requested_qty} units of "${rejectDialog.request?.items?.item_name}"? The branch will need to submit a new request.`}
+        confirmText="Reject Request"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={rejectingId === rejectDialog.request?.request_id}
+      />
     </div>
   );
 };
