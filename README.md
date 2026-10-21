@@ -1,13 +1,28 @@
-# StockLink
+# StockLink Inventory Management System
 
-StockLink is a multi-branch inventory and restocking system built for the Advanced Database Systems course project. It uses PostgreSQL triggers and a stored procedure to support low-stock detection, restock requests, stock movement logging, and audit history.
+StockLink is a comprehensive multi-branch inventory and restocking system built for the Advanced Database Systems course (IM101) finals project. It demonstrates advanced database concepts including PostgreSQL triggers, stored procedures, role-based access control, and comprehensive audit logging.
 
-## Stack
+**Project Status:** ✅ Complete — All core features implemented, tested, and polished for finals defense.
 
-- PostgreSQL (the team currently uses Supabase)
-- Express.js, Prisma, and Node.js for the API
-- React and Vite for the client
-- Jest and Supertest for integration tests
+## Technology Stack
+
+### Backend
+- **PostgreSQL** (hosted on Supabase) with custom triggers and stored procedures
+- **Express.js** REST API with JWT authentication
+- **Prisma ORM** for type-safe database access
+- **Node.js 18+** runtime
+
+### Frontend
+- **React 18** with modern hooks and context
+- **Vite** for fast development and optimized builds
+- **Tailwind CSS** for responsive UI design
+- **Lucide React** for icons
+
+### Testing & Quality
+- **Jest** for unit and integration testing
+- **Supertest** for API endpoint testing
+- **25+ integration tests** covering critical workflows
+- **ESLint** for code quality
 
 ## Requirements
 
@@ -94,15 +109,60 @@ npm run test:coverage
 npm run test:watch
 ```
 
-## Database and project files
+## Key Features
 
-- `migrations/001_init_schema.sql` defines the initial schema, triggers, and stored procedure.
-- `migrations/` contains follow-up fixes and database changes; review these with the DBA before applying them.
-- `prisma/schema.prisma` defines the Prisma client models.
-- `index.js` and `routes/` contain the Express API.
-- `client/src/` contains the React application.
-- `tests/integration/` contains API and database integration tests.
-- `SETUP_GUIDE.md` contains additional team setup notes.
+### Database Architecture (11 Tables)
+- ✅ **Normalized schema** with proper foreign keys and constraints
+- ✅ **Automated triggers** for low-stock detection and audit logging
+- ✅ **Stored procedure** for atomic restock fulfillment
+- ✅ **19 performance indexes** for optimized queries
+- ✅ **Composite primary keys** for junction tables
+
+### Role-Based Access Control
+- **Admin** — Full system access, user management, all branches
+- **Branch Manager** — Branch-specific inventory and restock approval
+- **Clerk** — Stock movements and sales logging
+
+### Core Functionality
+- ✅ Item catalog management with categories and pricing
+- ✅ Multi-branch stock tracking with reorder thresholds
+- ✅ Central warehouse inventory management
+- ✅ Automated restock request workflow
+- ✅ Stock movement logging (sales, withdrawals, adjustments)
+- ✅ Supplier management with item linking
+- ✅ Comprehensive audit trails
+- ✅ Reports & analytics dashboard
+
+### UI Polish
+- ✅ Toast notifications for all actions
+- ✅ Confirmation dialogs for destructive operations
+- ✅ Loading states with spinners
+- ✅ Responsive design (desktop and mobile)
+- ✅ Theme-aware components
+
+## Project Structure
+
+- `migrations/` — Database schema, triggers, and stored procedures (5 migration files)
+- `prisma/schema.prisma` — Prisma ORM schema definition
+- `index.js` — Express server entry point
+- `routes/` — API route handlers organized by resource
+- `middleware/` — Authentication and authorization middleware
+- `client/src/` — React frontend application
+  - `pages/` — Main application pages by role
+  - `components/common/` — Reusable UI components
+  - `context/` — React context for auth and state
+  - `api/` — API client configuration
+- `tests/integration/` — Integration test suites (5 test files)
+- `stocklink-dashboard.html` — Project dashboard for finals presentation
+- `SETUP_GUIDE.md` — Team setup and development guidelines
+
+## Finals Presentation
+
+Open `stocklink-dashboard.html` in your browser for a comprehensive project overview dashboard showcasing:
+- Phase completion status
+- Key features and technical highlights
+- Database architecture details
+- Technology stack overview
 
 ## Troubleshooting
 
@@ -110,3 +170,9 @@ npm run test:watch
 - **Prisma model/client errors after schema changes:** run `npx prisma generate` from the repository root.
 - **The client cannot reach the API:** confirm `npm run dev` is running, verify `client/.env` has the API URL above, and restart Vite after changing environment variables.
 - **Browser CORS errors:** confirm the API is running at the URL in `VITE_API_URL` and inspect the API terminal for errors.
+
+## Team
+
+- **Repository:** [github.com/bayronearljames-source/stocklink-inventory-system](https://github.com/bayronearljames-source/stocklink-inventory-system)
+- **Course:** IM101 — Advanced Database Systems
+- **Status:** Week 7 of 8-Week Finals Block
