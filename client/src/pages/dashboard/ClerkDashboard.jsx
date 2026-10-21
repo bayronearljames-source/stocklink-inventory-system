@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import {
   ShoppingCart,
@@ -25,6 +26,7 @@ const MOVEMENT_TYPES = [
 ];
 
 export const ClerkDashboard = () => {
+  const toast = useToast();
   const { user } = useAuth();
 
   // Stock items for the item selector dropdown — loaded from real API
@@ -41,8 +43,6 @@ export const ClerkDashboard = () => {
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState("");
-  const [submitError, setSubmitError] = useState("");
 
   // Load branch stock (for the item dropdown) and recent movements in parallel
   useEffect(() => {
@@ -79,8 +79,6 @@ export const ClerkDashboard = () => {
     e.preventDefault();
     if (!selectedRow) return;
 
-    setSubmitError("");
-    setSubmitSuccess("");
     setIsSubmitting(true);
 
     try {
@@ -98,7 +96,7 @@ export const ClerkDashboard = () => {
 
       const itemName =
         selectedRow.items?.item_name ?? `Item #${selectedRow.item_id}`;
-      setSubmitSuccess(
+      toast.success(
         `Logged: ${movementType} of ${quantity} unit(s) of "${itemName}". DB trigger evaluated branch stock.`,
       );
 
@@ -116,7 +114,7 @@ export const ClerkDashboard = () => {
       if (movementsRes.status === "fulfilled")
         setRecentMovements(movementsRes.value.slice(0, 3));
     } catch (err) {
-      setSubmitError(err.message);
+      toast.error(`Failed to record movement: ${err.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -146,20 +144,6 @@ export const ClerkDashboard = () => {
             title="Log Stock Movement"
             subtitle="Any quantity decrement below the reorder threshold immediately creates a restock request via DB trigger"
           >
-            {/* Feedback banners */}
-            {submitSuccess && (
-              <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                {submitSuccess}
-              </div>
-            )}
-            {submitError && (
-              <div className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                {submitError}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Item selector — built from real branch-stock data */}
               <div>

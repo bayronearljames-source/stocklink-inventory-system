@@ -5,10 +5,13 @@ import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
+import { useToast } from '../../components/common/ToastContainer';
 import { apiClient } from '../../api/client';
 import { ArrowLeftRight, Plus, ShoppingCart, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 export const StockMovements = () => {
+  const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role === ROLES.ADMIN;
   const canRecordMovement = [ROLES.CLERK, ROLES.BRANCH_MANAGER, ROLES.ADMIN].includes(user?.role);
@@ -44,11 +47,14 @@ export const StockMovements = () => {
       const data = await apiClient.get("/stock-movements");
       if (isMounted) setMovements(data);
     } catch (err) {
-      if (isMounted) setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+        toast.error(`Failed to load movements: ${err.message}`);
+      }
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const loadItems = useCallback(async () => {
     try {
@@ -56,8 +62,9 @@ export const StockMovements = () => {
       setItems(data);
     } catch (err) {
       console.error("Failed to load items:", err.message);
+      toast.error(`Failed to load items: ${err.message}`);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     let isMounted = true;
@@ -111,10 +118,13 @@ export const StockMovements = () => {
         quantity: qty,
       });
 
+      const selectedItem = items.find(item => item.item_id === Number(selectedItemId));
+      toast.success(`Stock movement recorded: ${qty} units of ${selectedItem?.item_name || 'item'}`);
       setIsModalOpen(false);
       await loadMovements(true);
     } catch (err) {
       setFormError(err.message);
+      toast.error(`Failed to record movement: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -176,11 +186,7 @@ export const StockMovements = () => {
         title="Movement Transaction History"
         subtitle={isAdmin ? "All branches consolidated view" : `Live branch ledger for your branch`}
       >
-        {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Loading movements…
-          </div>
-        )}
+        {isLoading && <LoadingOverlay message="Loading movements…" />}
 
         {!isLoading && error && (
           <div className="py-10 text-center text-sm text-rose-600">
