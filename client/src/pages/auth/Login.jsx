@@ -69,9 +69,7 @@ export const Login = () => {
               Sign in to your account
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              {isQuickLoginEnabled
-                ? "Quick-login with a seeded test account, or enter credentials manually."
-                : "Enter your credentials to access the system."}
+              Enter your credentials to access the system.
             </p>
           </div>
 
