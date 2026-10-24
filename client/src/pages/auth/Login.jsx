@@ -43,11 +43,15 @@ export const Login = () => {
 
   // Quick presets for the real seeded test accounts (per team convention,
   // scripts/create-user.js's own usage examples use "Passw0rd!" for these).
+  // Only enabled in development mode via VITE_ENABLE_QUICK_LOGIN env variable
   const handleQuickLogin = (quickUsername, quickPassword) => {
     setUsername(quickUsername);
     setPassword(quickPassword);
     performLogin(quickUsername, quickPassword);
   };
+
+  // Check if quick login is enabled (defaults to false for security)
+  const isQuickLoginEnabled = import.meta.env.VITE_ENABLE_QUICK_LOGIN === 'true';
 
   return (
     <div className="min-h-screen w-screen flex items-center justify-center bg-slate-900 px-4">
@@ -75,8 +79,9 @@ export const Login = () => {
               Sign in to your account
             </h2>
             <p className="text-xs text-slate-500 mt-1">
-              Quick-login with a seeded test account, or enter credentials
-              manually.
+              {isQuickLoginEnabled
+                ? "Quick-login with a seeded test account, or enter credentials manually."
+                : "Enter your credentials to access the system."}
             </p>
           </div>
 
@@ -86,7 +91,8 @@ export const Login = () => {
             </div>
           )}
 
-          {/* Quick Login Presets — real accounts, not mock data */}
+          {/* Quick Login Presets — only shown in development mode */}
+          {isQuickLoginEnabled && (
           <div className="space-y-2.5 mb-6">
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Quick Login (Test Accounts)
@@ -146,7 +152,9 @@ export const Login = () => {
               <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
+          )}
 
+          {isQuickLoginEnabled && (
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-200"></div>
@@ -157,6 +165,7 @@ export const Login = () => {
               </span>
             </div>
           </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
