@@ -57,9 +57,6 @@ export const Login = () => {
           <p className="text-sm text-slate-400 mt-1">
             Multi-Branch Hardware & Tools Inventory Distribution
           </p>
-          <div className="inline-block mt-2 px-3 py-0.5 rounded-full bg-slate-800 text-emerald-400 text-xs font-semibold border border-slate-700">
-            IM101 Finals • Phase 1 Prototype
-          </div>
         </div>
 
         {/* Card */}
