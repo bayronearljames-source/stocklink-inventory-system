@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ROLES } from "../../utils/constants";
-import { Wrench, Shield, Lock, User, ArrowRight } from "lucide-react";
+import { Wrench, Lock, User } from "lucide-react";
 import Button from "../../components/common/Button";
 
 export const Login = () => {
@@ -41,17 +41,7 @@ export const Login = () => {
     performLogin(username, password); // now actually uses what was typed
   };
 
-  // Quick presets for the real seeded test accounts (per team convention,
-  // scripts/create-user.js's own usage examples use "Passw0rd!" for these).
-  // Only enabled in development mode via VITE_ENABLE_QUICK_LOGIN env variable
-  const handleQuickLogin = (quickUsername, quickPassword) => {
-    setUsername(quickUsername);
-    setPassword(quickPassword);
-    performLogin(quickUsername, quickPassword);
-  };
-
-  // Check if quick login is enabled (defaults to false for security)
-  const isQuickLoginEnabled = import.meta.env.VITE_ENABLE_QUICK_LOGIN === 'true';
+  // Quick login removed for production deployment
 
   return (
     <div className="min-h-screen w-screen flex items-center justify-center bg-slate-900 px-4">
@@ -91,83 +81,7 @@ export const Login = () => {
             </div>
           )}
 
-          {/* Quick Login Presets — only shown in development mode */}
-          {isQuickLoginEnabled && (
-          <div className="space-y-2.5 mb-6">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Quick Login (Test Accounts)
-            </div>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin("testadmin", "Admin1234!")}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100/80 transition-all text-left group disabled:opacity-50"
-            >
-              <div>
-                <div className="text-sm font-bold text-purple-950 flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-purple-600" />
-                  Central Warehouse Admin
-                </div>
-                <div className="text-[11px] text-purple-700 mt-0.5">
-                  testadmin — all branches, catalog, approvals
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin("testmanager", "Admin1234!")}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100/80 transition-all text-left group disabled:opacity-50"
-            >
-              <div>
-                <div className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-blue-600" />
-                  Branch Manager
-                </div>
-                <div className="text-[11px] text-blue-700 mt-0.5">
-                  testmanager — branch stock, restock approvals
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-blue-600 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => handleQuickLogin("testclerk", "Admin1234!")}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80 transition-all text-left group disabled:opacity-50"
-            >
-              <div>
-                <div className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-emerald-600" />
-                  Branch Staff / Clerk
-                </div>
-                <div className="text-[11px] text-emerald-700 mt-0.5">
-                  testclerk — single branch access
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-          )}
-
-          {isQuickLoginEnabled && (
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-400 font-semibold">
-                Or enter credentials
-              </span>
-            </div>
-          </div>
-          )}
-
-          {/* Form */}
+          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
