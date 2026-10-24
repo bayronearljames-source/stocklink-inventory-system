@@ -3,10 +3,14 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import { Building2, Plus, MapPin, Phone } from "lucide-react";
 
 export const BranchManagement = () => {
+  const toast = useToast();
   const [branches, setBranches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,6 +18,9 @@ export const BranchManagement = () => {
   // Modal state — null = create mode, object = edit mode
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
+
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, branch: null });
 
   // Form fields — match exactly what POST/PUT /api/branches destructures:
   // { branch_name, location, contact_phone }
@@ -34,11 +41,14 @@ export const BranchManagement = () => {
       const data = await apiClient.get("/branches");
       if (isMounted) setBranches(data);
     } catch (err) {
-      if (isMounted) setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+        toast.error(`Failed to load branches: ${err.message}`);
+      }
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     let isMounted = true;
@@ -91,6 +101,7 @@ export const BranchManagement = () => {
           location: location.trim() || null,
           contact_phone: contactPhone.trim() || null,
         });
+        toast.success(`Branch "${branchName.trim()}" updated successfully`);
       } else {
         // POST /api/branches — create a new branch
         // contact_phone is optional so we send null when blank — Prisma accepts null
@@ -99,6 +110,7 @@ export const BranchManagement = () => {
           location: location.trim() || null,
           contact_phone: contactPhone.trim() || null,
         });
+        toast.success(`Branch "${branchName.trim()}" created successfully`);
       }
 
       setIsModalOpen(false);
@@ -106,18 +118,32 @@ export const BranchManagement = () => {
     } catch (err) {
       // Backend { error } message shown inside the form; modal stays open on failure
       setFormError(err.message);
+      toast.error(`Failed to save branch: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (branchId) => {
-    if (!window.confirm("Are you sure you want to delete this branch?")) return;
+  const openDeleteDialog = (branch) => {
+    setDeleteDialog({ isOpen: true, branch });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, branch: null });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { branch } = deleteDialog;
+    if (!branch) return;
+
     try {
-      await apiClient.delete(`/branches/${branchId}`);
+      await apiClient.delete(`/branches/${branch.branch_id}`);
+      toast.success(`Branch "${branch.branch_name}" deleted successfully`);
       await loadBranches(true);
+      closeDeleteDialog();
     } catch (err) {
-      alert(`Failed to delete branch: ${err.message}`);
+      toast.error(`Failed to delete branch: ${err.message}`);
+      closeDeleteDialog();
     }
   };
 
@@ -138,11 +164,7 @@ export const BranchManagement = () => {
         }
       />
 
-      {isLoading && (
-        <div className="py-16 text-center text-sm text-slate-500">
-          Loading branches…
-        </div>
-      )}
+      {isLoading && <LoadingOverlay message="Loading branches…" />}
 
       {!isLoading && error && (
         <div className="py-10 text-center text-sm text-rose-600">
@@ -178,7 +200,7 @@ export const BranchManagement = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(branch.branch_id)}
+                    onClick={() => openDeleteDialog(branch)}
                     className="text-xs font-semibold text-rose-600 hover:underline"
                   >
                     Delete
@@ -287,6 +309,18 @@ export const BranchManagement = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Branch?"
+        message={`Are you sure you want to delete "${deleteDialog.branch?.branch_name}"? This will affect any users or stock records assigned to this branch.`}
+        confirmText="Delete Branch"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

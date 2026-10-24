@@ -3,10 +3,14 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import { Plus, Search, Filter } from "lucide-react";
 
 export const ItemCatalog = () => {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,8 +23,7 @@ export const ItemCatalog = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null); // null = create mode, object = edit mode
 
-  // Controlled form fields — one piece of state per field so the instructor
-  // can follow exactly which value goes into which POST body key
+  // Controlled form fields
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
@@ -30,8 +33,9 @@ export const ItemCatalog = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
 
-  // useCallback so loadItems can be called both on mount (via useEffect)
-  // and after a successful create, without being re-created on every render
+  // Delete confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, item: null });
+
   const loadItems = useCallback(async (isMounted) => {
     setIsLoading(true);
     setError(null);
@@ -39,11 +43,14 @@ export const ItemCatalog = () => {
       const data = await apiClient.get("/items");
       if (isMounted) setItems(data);
     } catch (err) {
-      if (isMounted) setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+        toast.error(`Failed to load items: ${err.message}`);
+      }
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []); // no dependencies — apiClient is module-level, never changes
+  }, [toast]);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,7 +60,6 @@ export const ItemCatalog = () => {
     };
   }, [loadItems]);
 
-  // Reset form fields and error back to defaults when the modal opens
   const openModal = () => {
     setEditingItem(null);
     setItemName("");
@@ -75,7 +81,6 @@ export const ItemCatalog = () => {
   };
 
   const closeModal = () => {
-    // Don't close while a save is in flight — prevents accidental dismissal
     if (isSaving) return;
     setIsModalOpen(false);
   };
@@ -83,7 +88,6 @@ export const ItemCatalog = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Client-side validation before hitting the network
     if (!itemName.trim()) {
       setFormError("Item name is required.");
       return;
@@ -103,43 +107,53 @@ export const ItemCatalog = () => {
 
     try {
       if (editingItem) {
-        // PUT /api/items/:id
         await apiClient.put(`/items/${editingItem.item_id}`, {
           item_name: itemName.trim(),
           category: category.trim(),
           unit_price: price,
           unit_of_measure: unitOfMeasure.trim() || "pcs",
         });
+        toast.success(`Item "${itemName}" updated successfully`);
       } else {
-        // POST /api/items
         await apiClient.post("/items", {
           item_name: itemName.trim(),
           category: category.trim(),
           unit_price: price,
           unit_of_measure: unitOfMeasure.trim() || "pcs",
         });
+        toast.success(`Item "${itemName}" created successfully`);
       }
 
-      // Success: close the modal, then refresh the list
       setIsModalOpen(false);
-      // Pass true as isMounted — we're still mounted here
       await loadItems(true);
     } catch (err) {
-      // apiClient throws Error with the backend's { error } message on non-2xx.
-      // Show it inside the form — do NOT close the modal on failure.
       setFormError(err.message);
+      toast.error(`Failed to save item: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (itemId) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+  const openDeleteDialog = (item) => {
+    setDeleteDialog({ isOpen: true, item });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, item: null });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { item } = deleteDialog;
+    if (!item) return;
+
     try {
-      await apiClient.delete(`/items/${itemId}`);
+      await apiClient.delete(`/items/${item.item_id}`);
+      toast.success(`Item "${item.item_name}" deleted successfully`);
       await loadItems(true);
+      closeDeleteDialog();
     } catch (err) {
-      alert(`Failed to delete item: ${err.message}`);
+      toast.error(`Failed to delete item: ${err.message}`);
+      closeDeleteDialog();
     }
   };
 
@@ -169,7 +183,6 @@ export const ItemCatalog = () => {
           </span>
         }
         action={
-          // onClick now opens the modal instead of doing nothing
           <Button variant="primary" icon={Plus} onClick={openModal}>
             Add New Master Item
           </Button>
@@ -205,11 +218,7 @@ export const ItemCatalog = () => {
           </div>
         </div>
 
-        {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Loading items…
-          </div>
-        )}
+        {isLoading && <LoadingOverlay message="Loading items…" />}
 
         {!isLoading && error && (
           <div className="py-10 text-center text-sm text-rose-600">
@@ -261,7 +270,7 @@ export const ItemCatalog = () => {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(item.item_id)}
+                        onClick={() => openDeleteDialog(item)}
                         className="text-xs font-semibold text-rose-600 hover:underline"
                       >
                         Delete
@@ -275,14 +284,13 @@ export const ItemCatalog = () => {
         )}
       </Card>
 
-      {/* ── Add / Edit Item Modal ── */}
+      {/* Add / Edit Item Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
         title={editingItem ? "Edit Master Item" : "Add New Master Item"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Backend error banner — shown inside the form, modal stays open */}
           {formError && (
             <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {formError}
@@ -363,6 +371,18 @@ export const ItemCatalog = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Item?"
+        message={`Are you sure you want to delete "${deleteDialog.item?.item_name}"? This will also remove it from all branch stock records and supplier links.`}
+        confirmText="Delete Item"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

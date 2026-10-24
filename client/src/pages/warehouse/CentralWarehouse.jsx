@@ -3,10 +3,13 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import { Boxes, Pencil, Plus } from "lucide-react";
 
 export const CentralWarehouse = () => {
+  const toast = useToast();
   const [warehouses, setWarehouses] = useState([]);
   const [items, setItems] = useState([]);
   const [stockRows, setStockRows] = useState([]);
@@ -38,10 +41,11 @@ export const CentralWarehouse = () => {
       setStockRows(stockData);
     } catch (err) {
       setError(err.message);
+      toast.error(`Failed to load data: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWarehouse]);
+  }, [selectedWarehouse, toast]);
 
   useEffect(() => {
     loadData();
@@ -103,17 +107,22 @@ export const CentralWarehouse = () => {
           `/central-stock/${editingStock.warehouse_id}/${editingStock.item_id}`,
           { quantity: qty },
         );
+        const itemName = editingStock.items?.item_name || `Item #${editingStock.item_id}`;
+        toast.success(`Central stock updated: ${itemName} (Qty: ${qty})`);
       } else {
         await apiClient.post("/central-stock", {
           warehouse_id: Number(selectedWarehouse),
           item_id: Number(itemId),
           quantity: qty,
         });
+        const itemName = items.find(i => i.item_id === Number(itemId))?.item_name || 'item';
+        toast.success(`Central stock added: ${itemName} (Qty: ${qty})`);
       }
       await refreshStock();
       setIsModalOpen(false);
     } catch (err) {
       setFormError(err.message);
+      toast.error(`Failed to save stock: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -130,6 +139,7 @@ export const CentralWarehouse = () => {
         : []);
     } catch (err) {
       setError(err.message);
+      toast.error(`Failed to load warehouse stock: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +184,7 @@ export const CentralWarehouse = () => {
           )}
         </div>
 
-        {isLoading && <div className="py-10 text-center text-sm text-slate-500">Loading central inventory…</div>}
+        {isLoading && <LoadingOverlay message="Loading central inventory…" />}
         {!isLoading && error && <div className="py-8 text-center text-sm text-rose-600">Failed to load central inventory: {error}</div>}
         {!isLoading && !error && warehouses.length === 0 && (
           <div className="py-10 text-center text-sm text-slate-500">No central warehouses are configured.</div>

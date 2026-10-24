@@ -1,0 +1,607 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>StockLink Inventory System</title>
+<style>
+/* Design Plan:
+   Layout: Hero with live demo link → Feature grid → Tech architecture → Team
+   Color: Deep warehouse blue with safety orange accent, neutral concrete greys
+   Type: Inter for UI consistency, JetBrains Mono for code/data */
+
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #e5e5e5;
+  --text: #171717;
+  --text-muted: #737373;
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --primary: #1e3a8a;
+  --primary-light: #3b82f6;
+  --success: #16a34a;
+  --code-bg: #f5f5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0a0a;
+    --surface: #171717;
+    --border: #262626;
+    --text: #fafafa;
+    --text-muted: #a3a3a3;
+    --accent: #f97316;
+    --accent-hover: #fb923c;
+    --primary: #60a5fa;
+    --primary-light: #93c5fd;
+    --success: #22c55e;
+    --code-bg: #262626;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --surface: #171717;
+  --border: #262626;
+  --text: #fafafa;
+  --text-muted: #a3a3a3;
+  --accent: #f97316;
+  --accent-hover: #fb923c;
+  --primary: #60a5fa;
+  --primary-light: #93c5fd;
+  --success: #22c55e;
+  --code-bg: #262626;
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.hero {
+  padding-block: 64px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  text-wrap: balance;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: clamp(18px, 2.5vw, 24px);
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  max-width: 700px;
+  text-wrap: balance;
+}
+
+.cta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-muted);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 24px;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 64px;
+}
+
+.metric {
+  text-align: center;
+}
+
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  display: block;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+section {
+  max-width: 1200px;
+  margin: 0 auto 64px;
+}
+
+h2 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 32px;
+  letter-spacing: -0.01em;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.feature-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.feature-desc {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.tech-stack {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 64px;
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 32px;
+}
+
+.stack-category h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.stack-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stack-tag {
+  padding: 6px 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+
+.timeline {
+  position: relative;
+  padding-left: 32px;
+  border-left: 2px solid var(--border);
+}
+
+.phase {
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.phase::before {
+  content: '';
+  position: absolute;
+  left: -39px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  background: var(--success);
+  border: 3px solid var(--bg);
+  border-radius: 50%;
+}
+
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.phase-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.phase-status {
+  padding: 4px 10px;
+  background: var(--success);
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.phase-desc {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.team {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+  border-radius: 12px;
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.team h2 {
+  color: white;
+  margin-bottom: 16px;
+}
+
+.team-desc {
+  font-size: 18px;
+  opacity: 0.9;
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.team-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: white;
+  color: var(--primary);
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.team-link:hover {
+  transform: translateY(-2px);
+}
+
+footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-block: 32px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 24px;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+
+  .stack-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap">
+
+<div class="hero">
+  <div class="status-badge">
+    <span class="status-dot"></span>
+    <span>Ready for Finals Defense</span>
+  </div>
+
+  <h1>StockLink Inventory System</h1>
+
+  <p class="subtitle">
+    Enterprise-grade inventory management system built with React, Express, and PostgreSQL.
+    Features real-time stock tracking, automated restock workflows, and role-based access control.
+  </p>
+
+  <div class="cta-group">
+    <a href="http://localhost:5173" class="btn btn-primary" target="_blank">
+      <span>🚀</span>
+      <span>View Live Demo</span>
+    </a>
+    <a href="https://github.com/bayronearljames-source/stocklink-inventory-system" class="btn btn-secondary" target="_blank">
+      <span>📦</span>
+      <span>GitHub Repository</span>
+    </a>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <span class="metric-value">11</span>
+      <span class="metric-label">Database Tables</span>
+    </div>
+    <div class="metric">
+      <span class="metric-value">25+</span>
+      <span class="metric-label">API Endpoints</span>
+    </div>
+    <div class="metric">
+      <span class="metric-value">5</span>
+      <span class="metric-label">Test Suites</span>
+    </div>
+    <div class="metric">
+      <span class="metric-value">100%</span>
+      <span class="metric-label">Complete</span>
+    </div>
+  </div>
+</div>
+
+<section>
+  <h2>Core Features</h2>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🏢</div>
+      <div class="feature-title">Multi-Branch Management</div>
+      <p class="feature-desc">Manage inventory across multiple warehouse locations with centralized control and branch-specific stock levels.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <div class="feature-title">Automated Restock Workflow</div>
+      <p class="feature-desc">PostgreSQL triggers automatically generate restock requests when stock falls below threshold levels.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <div class="feature-title">Role-Based Access Control</div>
+      <p class="feature-desc">Three-tier permission system (Admin, Manager, Clerk) with JWT authentication and protected routes.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Real-Time Analytics</div>
+      <p class="feature-desc">Comprehensive reports and dashboards showing stock levels, movements, and restock request status.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Complete Audit Trail</div>
+      <p class="feature-desc">Automatic audit logging of all stock changes via database triggers for compliance and tracking.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🤝</div>
+      <div class="feature-title">Supplier Integration</div>
+      <p class="feature-desc">Manage supplier relationships with item linking, contact information, and restock request routing.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Technology Stack</h2>
+  <div class="tech-stack">
+    <div class="stack-grid">
+      <div class="stack-category">
+        <h3>Frontend</h3>
+        <div class="stack-items">
+          <span class="stack-tag">React 19</span>
+          <span class="stack-tag">Vite</span>
+          <span class="stack-tag">React Router</span>
+          <span class="stack-tag">Tailwind CSS</span>
+          <span class="stack-tag">Lucide Icons</span>
+        </div>
+      </div>
+
+      <div class="stack-category">
+        <h3>Backend</h3>
+        <div class="stack-items">
+          <span class="stack-tag">Node.js</span>
+          <span class="stack-tag">Express 5</span>
+          <span class="stack-tag">Prisma ORM</span>
+          <span class="stack-tag">JWT Auth</span>
+          <span class="stack-tag">bcrypt</span>
+        </div>
+      </div>
+
+      <div class="stack-category">
+        <h3>Database</h3>
+        <div class="stack-items">
+          <span class="stack-tag">PostgreSQL</span>
+          <span class="stack-tag">Supabase</span>
+          <span class="stack-tag">Triggers</span>
+          <span class="stack-tag">Stored Procedures</span>
+        </div>
+      </div>
+
+      <div class="stack-category">
+        <h3>Testing & Tools</h3>
+        <div class="stack-items">
+          <span class="stack-tag">Jest</span>
+          <span class="stack-tag">Supertest</span>
+          <span class="stack-tag">Git</span>
+          <span class="stack-tag">GitHub</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Development Phases</h2>
+  <div class="timeline">
+    <div class="phase">
+      <div class="phase-header">
+        <span class="phase-title">Phase 1: Foundation & Schema</span>
+        <span class="phase-status">✓ Complete</span>
+      </div>
+      <p class="phase-desc">Backend scaffolding, database schema design, 11 tables implemented with Prisma introspection</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="phase-title">Phase 2: Core CRUD Operations</span>
+        <span class="phase-status">✓ Complete</span>
+      </div>
+      <p class="phase-desc">Complete REST API with JWT authentication, role-based middleware, and frontend forms</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="phase-title">Phase 3-4: Advanced Features</span>
+        <span class="phase-status">✓ Complete</span>
+      </div>
+      <p class="phase-desc">Stored procedures, database triggers, role-based dashboards, stock movements, and analytics</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="phase-title">Phase 5: Testing & Polish</span>
+        <span class="phase-status">✓ Complete</span>
+      </div>
+      <p class="phase-desc">Integration tests with Jest, UI polish with toast notifications, confirmation dialogs, and loading states</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-header">
+        <span class="phase-title">Phase 6: Documentation</span>
+        <span class="phase-status">✓ Complete</span>
+      </div>
+      <p class="phase-desc">Comprehensive README, API documentation, database schema documentation, and project showcase</p>
+    </div>
+  </div>
+</section>
+
+<section class="team">
+  <h2>Advanced Database Systems Project</h2>
+  <p class="team-desc">
+    Built by the StockLink team for IM101 Finals Block at Bintoi University.
+    8-week project demonstrating enterprise database design, stored procedures, triggers, and full-stack development.
+  </p>
+  <a href="https://github.com/bayronearljames-source/stocklink-inventory-system" class="team-link" target="_blank">
+    <span>View Project on GitHub</span>
+    <span>→</span>
+  </a>
+</section>
+
+<footer>
+  <p>StockLink Inventory System © 2026 | Built with React, Express & PostgreSQL</p>
+  <p style="margin-top: 8px; opacity: 0.7;">Project by Vincent Hinacay & Team</p>
+</footer>

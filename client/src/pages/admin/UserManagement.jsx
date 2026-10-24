@@ -3,10 +3,14 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import { Plus, Pencil, Trash2, Key, UserCheck, AlertCircle } from "lucide-react";
 
 export const UserManagement = () => {
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +21,9 @@ export const UserManagement = () => {
   const [passwordResetUser, setPasswordResetUser] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState(null);
+
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, user: null });
 
   // Form state
   const [username, setUsername] = useState("");
@@ -36,6 +43,7 @@ export const UserManagement = () => {
       setBranches(branchData);
     } catch (err) {
       setError(err.message);
+      toast.error(`Failed to load user data: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +122,7 @@ export const UserManagement = () => {
           role,
           branch_id: branchId ? Number(branchId) : null,
         });
+        toast.success(`User "${username}" updated successfully`);
       } else {
         // Create user
         await apiClient.post("/users", {
@@ -122,12 +131,14 @@ export const UserManagement = () => {
           role,
           branch_id: branchId ? Number(branchId) : null,
         });
+        toast.success(`User "${username}" created successfully`);
       }
 
       await loadData();
       setIsModalOpen(false);
     } catch (err) {
       setFormError(err.message);
+      toast.error(`Failed to save user: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -150,24 +161,35 @@ export const UserManagement = () => {
       });
 
       setIsPasswordModalOpen(false);
-      alert(`Password reset successfully for ${passwordResetUser.username}`);
+      toast.success(`Password reset successfully for ${passwordResetUser.username}`);
     } catch (err) {
       setFormError(err.message);
+      toast.error(`Failed to reset password: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (user) => {
-    if (!confirm(`Are you sure you want to delete user "${user.username}"? This action cannot be undone.`)) {
-      return;
-    }
+  const openDeleteDialog = (user) => {
+    setDeleteDialog({ isOpen: true, user });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, user: null });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { user } = deleteDialog;
+    if (!user) return;
 
     try {
       await apiClient.delete(`/users/${user.user_id}`);
+      toast.success(`User "${user.username}" deleted successfully`);
       await loadData();
+      closeDeleteDialog();
     } catch (err) {
-      alert(`Failed to delete user: ${err.message}`);
+      toast.error(`Failed to delete user: ${err.message}`);
+      closeDeleteDialog();
     }
   };
 
@@ -203,9 +225,7 @@ export const UserManagement = () => {
       />
 
       <Card>
-        {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">Loading users…</div>
-        )}
+        {isLoading && <LoadingOverlay message="Loading users…" />}
 
         {!isLoading && error && (
           <div className="py-8 px-4 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-3">
@@ -284,7 +304,7 @@ export const UserManagement = () => {
                           variant="danger"
                           size="sm"
                           icon={Trash2}
-                          onClick={() => handleDelete(user)}
+                          onClick={() => openDeleteDialog(user)}
                         >
                           Delete
                         </Button>
@@ -448,6 +468,18 @@ export const UserManagement = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete User?"
+        message={`Are you sure you want to delete user "${deleteDialog.user?.username}"? This action cannot be undone.`}
+        confirmText="Delete User"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

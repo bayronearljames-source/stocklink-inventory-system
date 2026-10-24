@@ -1,0 +1,599 @@
+<title>StockLink Project Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: Clean dashboard grid with progress trackers and feature matrix */
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --accent: #0ea5e9;
+  --accent-light: #e0f2fe;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --purple: #8b5cf6;
+  --purple-light: #ede9fe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #64748b;
+    --accent: #38bdf8;
+    --accent-light: #082f49;
+    --success: #34d399;
+    --success-light: #064e3b;
+    --warning: #fbbf24;
+    --warning-light: #451a03;
+    --purple: #a78bfa;
+    --purple-light: #2e1065;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --accent: #38bdf8;
+  --accent-light: #082f49;
+  --success: #34d399;
+  --success-light: #064e3b;
+  --warning: #fbbf24;
+  --warning-light: #451a03;
+  --purple: #a78bfa;
+  --purple-light: #2e1065;
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.stat {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.phase {
+  margin-bottom: 24px;
+}
+
+.phase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.phase-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.phase-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.status-complete {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.status-current {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+.feature-list {
+  list-style: none;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.feature-item:last-child {
+  border-bottom: none;
+}
+
+.feature-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.icon-check {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.icon-progress {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.feature-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feature-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+}
+
+.feature-detail {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.tech-item {
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.highlight {
+  background: var(--purple-light);
+  color: var(--purple);
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-top: 16px;
+  border-left: 3px solid var(--purple);
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .stat {
+    font-size: 2rem;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<div class="container">
+  <header>
+    <h1>StockLink Inventory System</h1>
+    <div class="subtitle">Full-Stack Database Systems Project — Finals Deliverable</div>
+    <div class="meta">
+      <div class="meta-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <span>bayronearljames-source/stocklink-inventory-system</span>
+      </div>
+      <div class="meta-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0z"/>
+          <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5H6a.5.5 0 0 1 0-1h1.5V4a.5.5 0 0 1 .5-.5z"/>
+        </svg>
+        <span>Week 7 of 8-Week Block</span>
+      </div>
+      <div class="meta-item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"/>
+        </svg>
+        <span>IM101 — Advanced Database Systems</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="stat">11</div>
+      <div class="stat-label">Database Tables</div>
+    </div>
+    <div class="card">
+      <div class="stat">19</div>
+      <div class="stat-label">Performance Indexes</div>
+    </div>
+    <div class="card">
+      <div class="stat">25+</div>
+      <div class="stat-label">Integration Tests</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2 class="card-title">Phase Progress</h2>
+
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-name">Phase 0-1 — Foundation & Schema</div>
+          <span class="phase-status status-complete">✓ Complete</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-name">Phase 2 — Core CRUD Operations</div>
+          <span class="phase-status status-complete">✓ Complete</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-name">Phase 3-4 — Advanced Features</div>
+          <span class="phase-status status-complete">✓ Complete</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-name">Phase 5 — Testing & UI Polish</div>
+          <span class="phase-status status-complete">✓ Complete</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <div class="phase-name">Phase 6 — Documentation</div>
+          <span class="phase-status status-current">⟳ In Progress</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 30%"></div>
+        </div>
+      </div>
+
+      <div class="highlight">
+        <strong>Current Status:</strong> All core functionality complete. System ready for finals defense. Documentation in progress.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Key Features Implemented</h2>
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Role-Based Access Control</div>
+            <div class="feature-detail">Admin, Branch Manager, Clerk roles with JWT auth</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Automated Triggers</div>
+            <div class="feature-detail">Low-stock auto-restock & audit logging</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Stored Procedure</div>
+            <div class="feature-detail">sp_fulfill_restock_request with transaction safety</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Central Warehouse</div>
+            <div class="feature-detail">Multi-warehouse inventory tracking</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Stock Movements</div>
+            <div class="feature-detail">Sale, withdrawal, adjustment logging</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Reports & Analytics</div>
+            <div class="feature-detail">Live aggregated data across 3 report types</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">UI Polish</div>
+            <div class="feature-detail">Toast notifications, modals, loading states</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">Integration Tests</div>
+            <div class="feature-detail">5 test suites covering critical workflows</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2 class="card-title">Technology Stack</h2>
+      <div class="tech-grid">
+        <div class="tech-item">React 18</div>
+        <div class="tech-item">Vite</div>
+        <div class="tech-item">Tailwind CSS</div>
+        <div class="tech-item">Express.js</div>
+        <div class="tech-item">Prisma ORM</div>
+        <div class="tech-item">PostgreSQL</div>
+        <div class="tech-item">Supabase</div>
+        <div class="tech-item">JWT Auth</div>
+        <div class="tech-item">bcrypt</div>
+        <div class="tech-item">Jest</div>
+        <div class="tech-item">Supertest</div>
+        <div class="tech-item">Lucide Icons</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Database Architecture</h2>
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">11 Normalized Tables</div>
+            <div class="feature-detail">items, branches, suppliers, users, branch_stock, restock_requests, stock_movements, audit_logs, central_warehouse, central_stock, supplier_items</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">2 PostgreSQL Triggers</div>
+            <div class="feature-detail">trg_branch_stock_low, trg_audit_branch_stock</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">1 Stored Procedure</div>
+            <div class="feature-detail">sp_fulfill_restock_request (atomic transaction)</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">19 Performance Indexes</div>
+            <div class="feature-detail">Optimized queries for filtering and joins</div>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-icon icon-check">✓</div>
+          <div class="feature-text">
+            <div class="feature-name">5 Database Migrations</div>
+            <div class="feature-detail">Version-controlled schema evolution</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Technical Highlights</h2>
+    <div class="grid grid-2">
+      <div>
+        <h3 style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Automated Database Triggers</h3>
+        <ul class="feature-list" style="margin-top: 0;">
+          <li class="feature-item" style="padding-top: 8px;">
+            <div class="feature-text">
+              <div class="feature-name">Low-Stock Auto-Restock</div>
+              <div class="feature-detail">When branch_stock.quantity drops below reorder_threshold, automatically creates restock_requests entry with status 'pending'</div>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-text">
+              <div class="feature-name">Audit Logging</div>
+              <div class="feature-detail">Every INSERT, UPDATE, DELETE on branch_stock captured in audit_logs with before/after JSON snapshots</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Testing Coverage</h3>
+        <ul class="feature-list" style="margin-top: 0;">
+          <li class="feature-item" style="padding-top: 8px;">
+            <div class="feature-text">
+              <div class="feature-name">5 Test Suites</div>
+              <div class="feature-detail">auth.test.js, items.test.js, branches.test.js, restock.test.js, suppliers.test.js</div>
+            </div>
+          </li>
+          <li class="feature-item">
+            <div class="feature-text">
+              <div class="feature-name">25+ Test Cases</div>
+              <div class="feature-detail">Covers authentication, CRUD operations, triggers, stored procedures, and workflows</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>StockLink Inventory Management System — Finals Project for IM101 Advanced Database Systems</p>
+    <p style="margin-top: 8px;">Built with React, Express, Prisma, and PostgreSQL on Supabase</p>
+  </footer>
+</div>

@@ -5,10 +5,14 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
+import LoadingOverlay from "../../components/common/LoadingOverlay";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useToast } from "../../components/common/ToastContainer";
 import { apiClient } from "../../api/client";
 import { AlertTriangle, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
 
 export const BranchStock = () => {
+  const toast = useToast();
   const { user } = useAuth();
   const isAdmin = user?.role === ROLES.ADMIN;
   const canModify = isAdmin || user?.role === ROLES.BRANCH_MANAGER;
@@ -23,6 +27,9 @@ export const BranchStock = () => {
   // Modal state for Add/Edit stock
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStock, setEditingStock] = useState(null); // null = create mode, object = edit mode
+
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, stock: null });
 
   // Dropdown options
   const [branches, setBranches] = useState([]);
@@ -51,11 +58,14 @@ export const BranchStock = () => {
       const data = await apiClient.get("/branch-stock");
       if (isMounted) setStockRows(data);
     } catch (err) {
-      if (isMounted) setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+        toast.error(`Failed to load stock: ${err.message}`);
+      }
     } finally {
       if (isMounted) setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const loadBranches = useCallback(async () => {
     try {
@@ -63,8 +73,9 @@ export const BranchStock = () => {
       setBranches(data);
     } catch (err) {
       console.error("Failed to load branches:", err.message);
+      toast.error(`Failed to load branches: ${err.message}`);
     }
-  }, []);
+  }, [toast]);
 
   const loadItems = useCallback(async () => {
     try {
@@ -72,8 +83,9 @@ export const BranchStock = () => {
       setItems(data);
     } catch (err) {
       console.error("Failed to load items:", err.message);
+      toast.error(`Failed to load items: ${err.message}`);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     let isMounted = true;
@@ -164,6 +176,8 @@ export const BranchStock = () => {
           quantity: qty,
           reorder_threshold: threshold,
         });
+        const itemName = items.find(i => i.item_id === Number(selectedItemId))?.item_name || 'item';
+        toast.success(`Stock updated: ${itemName} (Qty: ${qty}, Threshold: ${threshold})`);
       } else {
         // POST /api/branch-stock
         await apiClient.post("/branch-stock", {
@@ -172,24 +186,41 @@ export const BranchStock = () => {
           quantity: qty,
           reorder_threshold: threshold,
         });
+        const itemName = items.find(i => i.item_id === Number(selectedItemId))?.item_name || 'item';
+        toast.success(`Stock assigned: ${itemName} to branch`);
       }
 
       setIsModalOpen(false);
       await loadStock(true);
     } catch (err) {
       setFormError(err.message);
+      toast.error(`Failed to save stock: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (branchId, itemId) => {
-    if (!window.confirm("Are you sure you want to delete this stock record?")) return;
+  const openDeleteDialog = (stock) => {
+    setDeleteDialog({ isOpen: true, stock });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, stock: null });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { stock } = deleteDialog;
+    if (!stock) return;
+
     try {
-      await apiClient.delete(`/branch-stock/${branchId}/${itemId}`);
+      await apiClient.delete(`/branch-stock/${stock.branch_id}/${stock.item_id}`);
+      const itemName = stock.items?.item_name || `Item #${stock.item_id}`;
+      toast.success(`Stock record deleted: ${itemName}`);
       await loadStock(true);
+      closeDeleteDialog();
     } catch (err) {
-      alert(`Failed to delete stock record: ${err.message}`);
+      toast.error(`Failed to delete stock record: ${err.message}`);
+      closeDeleteDialog();
     }
   };
 
@@ -244,11 +275,7 @@ export const BranchStock = () => {
           </div>
         )}
 
-        {isLoading && (
-          <div className="py-10 text-center text-sm text-slate-500">
-            Loading stock levels…
-          </div>
-        )}
+        {isLoading && <LoadingOverlay message="Loading stock levels…" />}
 
         {!isLoading && error && (
           <div className="py-10 text-center text-sm text-rose-600">
@@ -332,7 +359,7 @@ export const BranchStock = () => {
                           </button>
                           {isAdmin && (
                             <button
-                              onClick={() => handleDelete(row.branch_id, row.item_id)}
+                              onClick={() => openDeleteDialog(row)}
                               className="text-xs font-semibold text-rose-600 hover:underline inline-flex items-center gap-1"
                               title="Delete this stock record"
                             >
@@ -463,6 +490,18 @@ export const BranchStock = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Stock Record?"
+        message={`Are you sure you want to delete the stock record for "${deleteDialog.stock?.items?.item_name || 'this item'}"? This action cannot be undone.`}
+        confirmText="Delete Record"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };
