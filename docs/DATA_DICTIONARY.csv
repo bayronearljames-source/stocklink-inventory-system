@@ -1,0 +1,59 @@
+"table_name","column_name","data_type","is_nullable","column_default"
+"audit_logs","log_id","integer","NO","nextval('audit_logs_log_id_seq'::regclass)"
+"audit_logs","table_name","character varying","NO",NULL
+"audit_logs","record_id","integer","NO",NULL
+"audit_logs","action","character varying","NO",NULL
+"audit_logs","old_value","jsonb","YES",NULL
+"audit_logs","new_value","jsonb","YES",NULL
+"audit_logs","changed_by","integer","YES",NULL
+"audit_logs","changed_at","timestamp without time zone","NO","now()"
+"branch_stock","branch_id","integer","NO",NULL
+"branch_stock","item_id","integer","NO",NULL
+"branch_stock","quantity","integer","NO","0"
+"branch_stock","reorder_threshold","integer","NO","5"
+"branch_stock","last_restocked_at","timestamp without time zone","YES",NULL
+"branches","branch_id","integer","NO","nextval('branches_branch_id_seq'::regclass)"
+"branches","branch_name","character varying","NO",NULL
+"branches","location","character varying","NO",NULL
+"branches","contact_phone","character varying","YES",NULL
+"central_stock","warehouse_id","integer","NO",NULL
+"central_stock","item_id","integer","NO",NULL
+"central_stock","quantity","integer","NO","0"
+"central_warehouse","warehouse_id","integer","NO","nextval('central_warehouse_warehouse_id_seq'::regclass)"
+"central_warehouse","warehouse_name","character varying","NO",NULL
+"central_warehouse","location","character varying","NO",NULL
+"items","item_id","integer","NO","nextval('items_item_id_seq'::regclass)"
+"items","item_name","character varying","NO",NULL
+"items","category","character varying","NO",NULL
+"items","unit_price","numeric","NO",NULL
+"items","unit_of_measure","character varying","NO","'pcs'::character varying"
+"restock_requests","request_id","integer","NO","nextval('restock_requests_request_id_seq'::regclass)"
+"restock_requests","branch_id","integer","NO",NULL
+"restock_requests","item_id","integer","NO",NULL
+"restock_requests","requested_qty","integer","NO",NULL
+"restock_requests","status","character varying","NO","'pending'::character varying"
+"restock_requests","requested_at","timestamp without time zone","NO","now()"
+"restock_requests","fulfilled_at","timestamp without time zone","YES",NULL
+"restock_requests","approved_by","integer","YES",NULL
+"stock_movements","movement_id","integer","NO","nextval('stock_movements_movement_id_seq'::regclass)"
+"stock_movements","branch_id","integer","NO",NULL
+"stock_movements","item_id","integer","NO",NULL
+"stock_movements","moved_by","integer","YES",NULL
+"stock_movements","movement_type","character varying","NO",NULL
+"stock_movements","quantity","integer","NO",NULL
+"stock_movements","moved_at","timestamp without time zone","NO","now()"
+"stock_movements","warehouse_id","integer","YES",NULL
+"supplier_items","supplier_id","integer","NO",NULL
+"supplier_items","item_id","integer","NO",NULL
+"supplier_items","unit_cost","numeric","NO",NULL
+"supplier_items","lead_time_days","integer","NO",NULL
+"supplier_items","min_order_qty","integer","NO","1"
+"suppliers","supplier_id","integer","NO","nextval('suppliers_supplier_id_seq'::regclass)"
+"suppliers","supplier_name","character varying","NO",NULL
+"suppliers","contact_info","character varying","YES",NULL
+"users","user_id","integer","NO","nextval('users_user_id_seq'::regclass)"
+"users","username","character varying","NO",NULL
+"users","password_hash","character varying","NO",NULL
+"users","role","character varying","NO",NULL
+"users","branch_id","integer","YES",NULL
+"users","created_at","timestamp without time zone","NO","now()"
