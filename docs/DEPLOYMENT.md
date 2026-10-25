@@ -40,13 +40,13 @@ Create production user accounts (or use test accounts):
 
 ```bash
 # Admin account
-node scripts/create-user.js admin1 YourSecurePassword123! admin
+node scripts/create-user.js admin1 YOUR_SECURE_PASSWORD admin
 
 # Manager account (replace branch_id with actual branch)
-node scripts/create-user.js manager1 YourSecurePassword123! manager 1
+node scripts/create-user.js manager1 YOUR_SECURE_PASSWORD manager 1
 
 # Clerk account
-node scripts/create-user.js clerk1 YourSecurePassword123! clerk 1
+node scripts/create-user.js clerk1 YOUR_SECURE_PASSWORD clerk 1
 ```
 
 ---
@@ -159,7 +159,7 @@ Create `vercel.json` in project root:
    Click "Environment Variables" and add:
 
    ```
-   DATABASE_URL = postgresql://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres
+   DATABASE_URL = <SET_PRIVATELY_IN_HOSTING_DASHBOARD>
 
    JWT_SECRET = YOUR_SECURE_JWT_SECRET_HERE
 
@@ -206,7 +206,7 @@ Go to: https://render.com/
 4. **Add Environment Variables:**
 
    ```
-   DATABASE_URL = postgresql://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres
+   DATABASE_URL = <SET_PRIVATELY_IN_HOSTING_DASHBOARD>
 
    JWT_SECRET = YOUR_SECURE_JWT_SECRET_HERE
 
@@ -256,9 +256,9 @@ Go to: https://railway.app/
 3. Add:
 
    ```
-   DATABASE_URL = postgresql://stocklink_app.aidnjiqbykohexbvcmmk:Stocklink2026@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+   DATABASE_URL = postgresql://[Your Password]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
 
-   JWT_SECRET = stocklink-super-secret-jwt-key-2026
+   JWT_SECRET = <GENERATE_AND_SET_PRIVATELY>
 
    NODE_ENV = production
 
@@ -287,7 +287,7 @@ Commit and push - Railway auto-deploys!
 
 ```env
 # Database Connection (Supabase PostgreSQL)
-DATABASE_URL="postgresql://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres"
+DATABASE_URL=<SET_PRIVATELY_IN_HOSTING_DASHBOARD>
 
 # JWT Secret for authentication tokens (generate a secure random string)
 JWT_SECRET="YOUR_SECURE_JWT_SECRET_HERE"
