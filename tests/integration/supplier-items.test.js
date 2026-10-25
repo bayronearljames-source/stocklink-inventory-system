@@ -49,7 +49,7 @@ describe("Supplier-Item Linking", () => {
 
       expect(Array.isArray(items)).toBe(true);
       expect(items.length).toBe(1);
-      expect(items[0].unit_cost).toBe(100.0);
+      expect(Number(items[0].unit_cost)).toBe(100.0);
       expect(items[0].lead_time_days).toBe(5);
     });
 
@@ -71,6 +71,17 @@ describe("Supplier-Item Linking", () => {
 
   describe("GET /api/items/:id/suppliers", () => {
     it("should return all suppliers for a specific item", async () => {
+      // Use an item with no existing supplier links so this assertion does not
+      // depend on links created by earlier tests in this suite.
+      const item = await prisma.items.create({
+        data: {
+          item_name: "Supplier Count Test Item",
+          category: "Test",
+          unit_price: 1.0,
+          unit_of_measure: "pcs",
+        },
+      });
+
       const supplier1 = await prisma.suppliers.create({
         data: {
           supplier_name: "Supplier A",
@@ -89,14 +100,14 @@ describe("Supplier-Item Linking", () => {
         data: [
           {
             supplier_id: supplier1.supplier_id,
-            item_id: testData.items[0].item_id,
+            item_id: item.item_id,
             unit_cost: 90.0,
             lead_time_days: 3,
             min_order_qty: 5,
           },
           {
             supplier_id: supplier2.supplier_id,
-            item_id: testData.items[0].item_id,
+            item_id: item.item_id,
             unit_cost: 95.0,
             lead_time_days: 7,
             min_order_qty: 10,
@@ -105,7 +116,7 @@ describe("Supplier-Item Linking", () => {
       });
 
       const suppliers = await prisma.supplier_items.findMany({
-        where: { item_id: testData.items[0].item_id },
+        where: { item_id: item.item_id },
         include: { suppliers: true },
       });
 
