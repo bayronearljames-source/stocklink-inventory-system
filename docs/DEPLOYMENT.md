@@ -58,75 +58,131 @@ Choose one platform based on your needs:
 ### Option 1: Vercel (Recommended for Full-Stack)
 
 **Pros:**
+
 - ✅ Easy GitHub integration
 - ✅ Automatic deployments
 - ✅ Free SSL certificates
 - ✅ Good for React + Node.js apps
 
 **Cons:**
+
 - ⚠️ Serverless functions have 10-second timeout (hobby plan)
 
 ### Option 2: Render
 
 **Pros:**
+
 - ✅ Full backend support (no serverless limits)
 - ✅ Free PostgreSQL hosting included
 - ✅ Background workers support
 - ✅ Good for traditional Node.js apps
 
 **Cons:**
+
 - ⚠️ Slower cold starts on free tier
 - ⚠️ Free services spin down after 15 minutes inactivity
 
 ### Option 3: Railway
 
 **Pros:**
+
 - ✅ Full-stack deployment
 - ✅ PostgreSQL included
 - ✅ Simple configuration
 
 **Cons:**
+
 - ⚠️ Limited free tier ($5 credit)
 
 ---
 
 ## 📦 Deploying to Vercel
 
-StockLink has a Vite frontend in `client/` and an Express API in the repository root. Deploy them as **two Vercel projects** connected to the same GitHub repository. Do not use a root `vercel.json` to build the frontend and API together.
+### Step 1: Install Vercel CLI (Optional)
 
-### 1. Deploy the API project
+```bash
+npm install -g vercel
+```
 
-1. In Vercel, choose **Add New → Project** and import `bayronearljames-source/stocklink-inventory-system`.
-2. Set **Root Directory** to `.` (the repository root). Vercel detects the root `index.js` Express app; leave the Build Command and Output Directory at their detected defaults.
-3. Before deploying, add these environment variables in **Settings → Environment Variables**:
+### Step 2: Prepare vercel.json
 
-   | Name | Production value | Preview value |
-   | --- | --- | --- |
-   | `DATABASE_URL` | Supabase Production **Transaction pooler** URI, with `pgbouncer=true` | Disposable test database Transaction pooler URI, with `pgbouncer=true` |
-   | `JWT_SECRET` | A new, random secret stored only in Vercel | A separate random secret |
-   | `NODE_ENV` | `production` | `production` |
-   | `DB_ENVIRONMENT` | `production` | `test` |
+Create `vercel.json` in project root:
 
-   Get each database URI from the corresponding Supabase project's **Connect → Transaction pooler**. The URI uses port `6543`; preserve the username and host Supabase provides. URL-encode special characters in the password. For this Prisma 5 serverless app, add `pgbouncer=true&connection_limit=1` to the URI's query parameters.
+```json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "client/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/dist/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
+```
 
-   Generate a random JWT secret locally with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`. Paste the output directly into Vercel; do not commit it or send it in chat.
+### Step 3: Deploy via Vercel Dashboard
 
-4. Deploy the prep branch as a **Preview** deployment first. Check the deployment URL root; it should respond `StockLink API is running`.
+1. **Go to:** https://vercel.com/new
+2. **Import from GitHub:**
+   - Connect your GitHub account
+   - Select: `bayronearljames-source/stocklink-inventory-system`
+   - Branch: `main`
 
-### 2. Deploy the frontend project
+3. **Configure Project:**
+   - Framework Preset: **Other**
+   - Root Directory: `./`
+   - Build Command: `cd client && npm install && npm run build`
+   - Output Directory: `client/dist`
 
-1. In Vercel, add another project and import the same repository.
-2. Set **Root Directory** to `client/`. Vercel should detect Vite. Use `npm run build` as the Build Command and `dist` as the Output Directory.
-3. Add `VITE_API_URL` under Environment Variables:
-   - **Preview:** `https://<API-preview-domain>/api`
-   - **Production:** `https://<API-production-domain>/api`
-4. Deploy the prep branch as a **Preview** deployment. Open the frontend preview and test login and read-only pages using test-database accounts. Avoid stock-changing actions against Production during preview testing.
+4. **Add Environment Variables:**
 
-### 3. Promote to Production
+   Click "Environment Variables" and add:
 
-After both Preview deployments work with the disposable test database, open a pull request for the prep branch. Merge it only after review. Vercel then creates Production deployments from `main`; verify the API and frontend URLs and test login with a dedicated Production account.
+   ```
+   DATABASE_URL = postgresql://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres
 
-Do not put database passwords, JWT secrets, or live account credentials in GitHub or this guide. Keep them in each Vercel project's Environment Variables.
+   JWT_SECRET = YOUR_SECURE_JWT_SECRET_HERE
+
+   NODE_ENV = production
+   ```
+
+   > 📝 Replace with your actual Supabase connection string and a secure JWT secret (use a password generator for the JWT secret)
+
+5. **Deploy:**
+   - Click "Deploy"
+   - Wait 2-3 minutes for build
+   - Get your live URL: `https://stocklink-inventory-system.vercel.app`
+
+### Step 4: Update Frontend API URL
+
+After deployment, update the frontend to use the production API:
+
+1. In your Vercel dashboard, go to **Settings** → **Environment Variables**
+2. Add for the **client** build:
+   ```
+   VITE_API_URL = https://YOUR-VERCEL-URL.vercel.app/api
+   ```
+3. Redeploy from dashboard
 
 ---
 
@@ -148,11 +204,12 @@ Go to: https://render.com/
    - **Plan:** Free
 
 4. **Add Environment Variables:**
+
    ```
    DATABASE_URL = postgresql://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres
-   
+
    JWT_SECRET = YOUR_SECURE_JWT_SECRET_HERE
-   
+
    NODE_ENV = production
    ```
 
@@ -169,6 +226,7 @@ Go to: https://render.com/
    - **Publish Directory:** `client/dist`
 
 4. **Add Environment Variable:**
+
    ```
    VITE_API_URL = https://stocklink-backend.onrender.com/api
    ```
@@ -196,11 +254,15 @@ Go to: https://railway.app/
 1. Click on your service
 2. Go to **"Variables"** tab
 3. Add:
-   ```env
-   DATABASE_URL=YOUR_PRIVATE_DATABASE_URL
-   JWT_SECRET=YOUR_PRIVATE_RANDOM_SECRET
-   NODE_ENV=production
-   PORT=3000
+
+   ```
+   DATABASE_URL = postgresql://stocklink_app.aidnjiqbykohexbvcmmk:Stocklink2026@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
+
+   JWT_SECRET = stocklink-super-secret-jwt-key-2026
+
+   NODE_ENV = production
+
+   PORT = 3000
    ```
 
 4. Go to **"Settings"** → **"Networking"**
@@ -210,6 +272,7 @@ Go to: https://railway.app/
 ### Step 4: Configure Frontend
 
 Update `client/.env.production`:
+
 ```
 VITE_API_URL=https://YOUR-RAILWAY-URL.up.railway.app/api
 ```
@@ -234,6 +297,7 @@ NODE_ENV="production"
 ```
 
 > 🔐 **Security Best Practices:**
+>
 > - Never commit `.env` files to Git (already in `.gitignore`)
 > - Use strong, unique passwords for database access
 > - Generate JWT secret with: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
@@ -277,16 +341,19 @@ curl https://YOUR-DEPLOYED-URL/api/branches
 Test with different accounts:
 
 **Admin:**
+
 - Username: `testadmin`
 - Password: `Admin1234!`
 - Should see: All features, all branches
 
 **Manager:**
+
 - Username: `testmanager`
 - Password: `Admin1234!`
 - Should see: Branch management, stock approvals
 
 **Clerk:**
+
 - Username: `testclerk`
 - Password: `Admin1234!`
 - Should see: Limited branch access, basic operations
@@ -298,6 +365,7 @@ Test with different accounts:
 ### Issue: "Can't reach database server"
 
 **Solution:**
+
 1. Check Supabase database is **not paused**
 2. Verify `DATABASE_URL` environment variable is correct
 3. Check database has internet access enabled
@@ -305,6 +373,7 @@ Test with different accounts:
 ### Issue: "Login failed"
 
 **Solution:**
+
 1. Check backend is running: `https://YOUR-URL/api/branches`
 2. Verify user accounts exist in database
 3. Check JWT_SECRET is set
@@ -313,6 +382,7 @@ Test with different accounts:
 ### Issue: Frontend shows blank page
 
 **Solution:**
+
 1. Check browser console for errors
 2. Verify `VITE_API_URL` points to correct backend
 3. Ensure frontend build succeeded
@@ -321,6 +391,7 @@ Test with different accounts:
 ### Issue: 401 Unauthorized on all requests
 
 **Solution:**
+
 1. Clear browser cache and cookies
 2. Check JWT_SECRET matches between deployments
 3. Try logging in again
@@ -330,11 +401,23 @@ Test with different accounts:
 
 ## 📊 Production Credentials
 
-### Test Accounts
+### Test Accounts (Development/Grading)
 
-Test accounts are for the disposable test database only. Do not use or publish these credentials for Production.
+Use these for demonstration and grading:
 
+```
+Admin:
+- Username: testadmin
+- Password: Admin1234!
 
+Manager:
+- Username: testmanager
+- Password: Admin1234!
+
+Clerk:
+- Username: testclerk
+- Password: Admin1234!
+```
 
 ### Production Accounts (Actual Use)
 
@@ -345,6 +428,7 @@ node scripts/create-user.js <username> <secure-password> <role> [branch_id]
 ```
 
 **Password Requirements:**
+
 - At least 8 characters
 - Include uppercase, lowercase, numbers
 - Use unique passwords for each account
@@ -358,11 +442,13 @@ node scripts/create-user.js <username> <secure-password> <role> [branch_id]
 Provide your professor with:
 
 1. **Live URL:**
+
    ```
    https://your-deployed-app.vercel.app
    ```
 
 2. **Test Credentials:**
+
    ```
    Admin Account:
    Username: testadmin
@@ -370,6 +456,7 @@ Provide your professor with:
    ```
 
 3. **GitHub Repository:**
+
    ```
    https://github.com/bayronearljames-source/stocklink-inventory-system
    ```
