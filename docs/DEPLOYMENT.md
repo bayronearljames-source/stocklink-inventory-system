@@ -246,14 +246,11 @@ Go to: https://railway.app/
 1. Click on your service
 2. Go to **"Variables"** tab
 3. Add:
-   ```
-   DATABASE_URL = postgresql://stocklink_app.aidnjiqbykohexbvcmmk:Stocklink2026@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
-   
-   JWT_SECRET = stocklink-super-secret-jwt-key-2026
-   
-   NODE_ENV = production
-   
-   PORT = 3000
+   ```env
+   DATABASE_URL=YOUR_PRIVATE_DATABASE_URL
+   JWT_SECRET=YOUR_PRIVATE_RANDOM_SECRET
+   NODE_ENV=production
+   PORT=3000
    ```
 
 4. Go to **"Settings"** → **"Networking"**
@@ -383,23 +380,11 @@ Test with different accounts:
 
 ## 📊 Production Credentials
 
-### Test Accounts (Development/Grading)
+### Test Accounts
 
-Use these for demonstration and grading:
+Test accounts are for the disposable test database only. Do not use or publish these credentials for Production.
 
-```
-Admin:
-- Username: testadmin
-- Password: Admin1234!
 
-Manager:
-- Username: testmanager
-- Password: Admin1234!
-
-Clerk:
-- Username: testclerk
-- Password: Admin1234!
-```
 
 ### Production Accounts (Actual Use)
 
