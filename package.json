@@ -13,7 +13,7 @@
     "test:coverage": "jest --coverage",
     "test:integration": "jest tests/integration",
     "test:unit": "jest tests/unit",
-    "postinstall": "prisma skills sync || exit 0"
+    "postinstall": "prisma generate"
   },
   "repository": {
     "type": "git",
