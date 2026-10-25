@@ -1,0 +1,490 @@
+<title>StockLink Defense Cheat Sheet</title>
+<style>
+/* Design System */
+:root {
+  /* Layout: Compact print-optimized single-page reference */
+
+  /* Colors - Professional print palette */
+  --bg: #FFFFFF;
+  --text: #1A1D23;
+  --text-secondary: #4B5563;
+  --accent: #2563EB;
+  --border: #D1D5DB;
+  --surface: #F9FAFB;
+  --highlight: #FEF3C7;
+
+  /* Typography */
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Courier New', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1A1D23;
+    --text: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --accent: #60A5FA;
+    --border: #374151;
+    --surface: #252A33;
+    --highlight: #78350F;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1A1D23;
+  --text: #F9FAFB;
+  --text-secondary: #D1D5DB;
+  --accent: #60A5FA;
+  --border: #374151;
+  --surface: #252A33;
+  --highlight: #78350F;
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media print {
+  body {
+    font-size: 9px;
+    padding: 8px;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  .page-break {
+    page-break-after: avoid;
+  }
+}
+
+h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 6px;
+}
+
+h2 {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 10px;
+  margin-bottom: 6px;
+  background: var(--surface);
+  padding: 4px 8px;
+  border-left: 3px solid var(--accent);
+}
+
+h3 {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.highlight-box {
+  background: var(--highlight);
+  border: 2px solid var(--accent);
+  padding: 8px;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+ul, ol {
+  margin-left: 16px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+li {
+  margin-bottom: 2px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--surface);
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+strong {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.compact {
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 3px 6px;
+  text-align: left;
+}
+
+th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.print-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.print-btn:hover {
+  opacity: 0.9;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<button class="print-btn no-print" onclick="window.print()">🖨️ Print</button>
+
+<h1>📋 StockLink Defense Cheat Sheet</h1>
+
+<div class="highlight-box">
+  <h3>🎯 60-Second Pitch (Memorize This!)</h3>
+  <p><strong>The user signs in through the React client.</strong> Express looks up the username through Prisma, bcrypt compares the password with the stored hash, and the API issues an expiring JWT with the user's ID, role, and branch. <strong>Protected API routes verify that token</strong> and enforce role and branch scope. A branch request stores the authenticated branch. <strong>PostgreSQL triggers create low-stock requests and audit entries.</strong> When an admin fulfills a request, Express calls the parameterized stored procedure. <strong>PostgreSQL locks the pending request and central-stock row,</strong> checks quantity, moves stock, writes movement and audit records, and updates the request in one transaction. The browser only sees the API response; it never receives the database credential.</p>
+</div>
+
+<div class="grid">
+  <!-- Column 1 -->
+  <div class="card">
+    <h2>📊 Quick Facts</h2>
+    <ul class="compact">
+      <li><strong>11 tables:</strong> items, branches, suppliers, users, branch_stock, central_stock, warehouse_stock, supplier_items, restock_requests, stock_movements, audit_logs, branch_managers</li>
+      <li><strong>3 triggers:</strong> trg_branch_stock_low, trg_audit_branch_stock, trg_audit_warehouse_stock</li>
+      <li><strong>1 stored procedure:</strong> sp_fulfill_restock_request</li>
+      <li><strong>25+ API endpoints</strong> with JWT auth</li>
+      <li><strong>3 roles:</strong> Admin, Manager, Clerk</li>
+      <li><strong>5 test suites</strong> with disposable test DB</li>
+    </ul>
+
+    <h3>Tech Stack</h3>
+    <ul class="compact">
+      <li><strong>Frontend:</strong> React 18 + Vite + Tailwind CSS</li>
+      <li><strong>Backend:</strong> Express.js + Prisma ORM + Node.js</li>
+      <li><strong>Database:</strong> PostgreSQL on Supabase</li>
+      <li><strong>Deployment:</strong> Vercel (2 projects)</li>
+    </ul>
+  </div>
+
+  <!-- Column 2 -->
+  <div class="card">
+    <h2>🔄 Restock Workflow (Key Demo)</h2>
+    <ol class="compact">
+      <li><strong>Low stock detected:</strong> Trigger fires when quantity &lt; threshold</li>
+      <li><strong>Request created:</strong> Auto-insert into restock_requests (status='pending')</li>
+      <li><strong>Admin reviews:</strong> Sees pending requests in queue</li>
+      <li><strong>Fulfill action:</strong> Admin clicks fulfill, selects warehouse</li>
+      <li><strong>Procedure executes:</strong> <code>sp_fulfill_restock_request(request_id, warehouse_id, user_id)</code></li>
+      <li><strong>Transaction locks:</strong> FOR UPDATE on request + central_stock rows</li>
+      <li><strong>Stock transfer:</strong> Warehouse↓ Branch↑ both updated atomically</li>
+      <li><strong>Movement logged:</strong> Insert into stock_movements</li>
+      <li><strong>Status updated:</strong> Request marked 'fulfilled'</li>
+      <li><strong>Audit captured:</strong> Triggers write before/after JSONB snapshots</li>
+    </ol>
+  </div>
+
+  <!-- Column 3 -->
+  <div class="card">
+    <h2>🔐 Security Highlights</h2>
+    <ul class="compact">
+      <li><strong>JWT auth:</strong> Bearer token with user_id, role, branch_id (8hr expiry)</li>
+      <li><strong>Bcrypt passwords:</strong> Hashed, never plaintext</li>
+      <li><strong>Role middleware:</strong> <code>requireAuth</code>, <code>requireRole</code></li>
+      <li><strong>Branch scoping:</strong> API uses <code>req.user.branch_id</code> from verified token</li>
+      <li><strong>SQL injection protection:</strong> Prisma parameterized queries + tagged <code>$executeRaw</code></li>
+      <li><strong>No direct DB access:</strong> Browser → API → Prisma → PostgreSQL</li>
+    </ul>
+
+    <h3>Database Constraints</h3>
+    <ul class="compact">
+      <li>Quantity ≥ 0 (CHECK constraint)</li>
+      <li>Unique usernames</li>
+      <li>FK cascades on supplier deletion</li>
+      <li>FK restricts on active stock/requests</li>
+      <li>Composite keys (branch+item, warehouse+item)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <h2>🎤 Top 5 Expected Questions</h2>
+
+    <h3>1. Why a stored procedure for fulfillment?</h3>
+    <p class="compact"><strong>Answer:</strong> Multi-row operation (check request, verify stock, decrement warehouse, increment branch, log movement, update status) must be atomic. PostgreSQL keeps it transactional and centralized. Locks prevent double-fulfillment and overselling.</p>
+
+    <h3>2. How do you prevent SQL injection?</h3>
+    <p class="compact"><strong>Answer:</strong> Prisma structured queries parameterize values. Stored procedure uses <code>$executeRaw</code> tagged template. Never concatenate user input into SQL. <strong>Show in index.js:</strong> <code>await prisma.$executeRaw`CALL sp_fulfill_restock_request(...)`</code></p>
+
+    <h3>3. Why triggers instead of API logging?</h3>
+    <p class="compact"><strong>Answer:</strong> Trigger observes mutation at database boundary. Captures changes even if not from normal UI path. Writes old/new JSONB snapshots. Coupled to the same transaction.</p>
+
+    <h3>4. How does branch scoping work?</h3>
+    <p class="compact"><strong>Answer:</strong> JWT contains verified <code>branch_id</code>. API derives identity from <code>req.user.branch_id</code>, not from browser payload. Role middleware restricts admin-only actions. UI hiding is convenience, not security.</p>
+
+    <h3>5. How do you test safely?</h3>
+    <p class="compact"><strong>Answer:</strong> Separate disposable test database in <code>.env.test</code>. Setup guard rejects same-project URL. Tests clear and seed data. Never run Jest against production.</p>
+  </div>
+
+  <div class="card">
+    <h2>📁 Key Files to Open</h2>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>What to Show</th>
+      </tr>
+      <tr>
+        <td><code>prisma/schema.prisma</code></td>
+        <td>11 models, relations, composite keys, indexes</td>
+      </tr>
+      <tr>
+        <td><code>migrations/001_init_schema.sql</code></td>
+        <td>Tables, constraints, initial triggers</td>
+      </tr>
+      <tr>
+        <td><code>migrations/008_stock_audit_and_fulfillment_guards.sql</code></td>
+        <td>Stored procedure, audit triggers, FOR UPDATE locks</td>
+      </tr>
+      <tr>
+        <td><code>index.js</code></td>
+        <td>API routes, procedure call, parameterized queries</td>
+      </tr>
+      <tr>
+        <td><code>middleware/auth.js</code></td>
+        <td>requireAuth, requireRole, JWT verification</td>
+      </tr>
+      <tr>
+        <td><code>tests/integration/</code></td>
+        <td>Test suites, setup guards</td>
+      </tr>
+    </table>
+
+    <h3>Demo Credentials (Keep Private!)</h3>
+    <ul class="compact">
+      <li><strong>Admin:</strong> testadmin / Admin1234!</li>
+      <li><strong>Manager:</strong> testmanager / Admin1234!</li>
+      <li><strong>Clerk:</strong> testclerk / Admin1234!</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <h2>⏱️ 10-Minute Presentation Flow</h2>
+  <table>
+    <tr>
+      <th>Time</th>
+      <th>Action</th>
+      <th>What to Show/Say</th>
+    </tr>
+    <tr>
+      <td>0:00-0:45</td>
+      <td>Introduce StockLink</td>
+      <td>Multi-branch inventory problem, controlled replenishment workflow</td>
+    </tr>
+    <tr>
+      <td>0:45-2:15</td>
+      <td>Architecture diagram</td>
+      <td>Browser → Vercel frontend → Express API → Prisma → Supabase PostgreSQL</td>
+    </tr>
+    <tr>
+      <td>2:15-4:00</td>
+      <td>Show ERD (PDF)</td>
+      <td>11 tables, keys, FKs, composite keys. Follow one item from catalog → branch stock → restock</td>
+    </tr>
+    <tr>
+      <td>4:00-6:30</td>
+      <td>Live demo (read-only)</td>
+      <td>Login, dashboard, catalog, central warehouse, branch stock, restock queue, suppliers, audit logs</td>
+    </tr>
+    <tr>
+      <td>6:30-8:00</td>
+      <td>Server automation</td>
+      <td>Low-stock trigger, audit triggers, sp_fulfill_restock_request. Trace one fulfillment end-to-end</td>
+    </tr>
+    <tr>
+      <td>8:00-9:00</td>
+      <td>Tests, indexes, deployment</td>
+      <td>Test suites, disposable DB guard, benchmark report, deployed URLs, migration files</td>
+    </tr>
+    <tr>
+      <td>9:00-10:00</td>
+      <td>Summarize + Q&A</td>
+      <td>Design choices, limitations, future improvements. Invite questions.</td>
+    </tr>
+  </table>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>✅ Defense Day Checklist</h2>
+    <h3>Before You Go</h3>
+    <ul class="compact">
+      <li>☐ Assign 3 speaking roles (DBA, DB Programmer, UI Connector)</li>
+      <li>☐ Practice 60-second pitch together</li>
+      <li>☐ Open key files in VS Code</li>
+      <li>☐ Test deployed URLs work</li>
+      <li>☐ Have demo credentials ready (private)</li>
+      <li>☐ Prepare screenshots (backup if offline)</li>
+      <li>☐ Hide .env, tokens, passwords from screen share</li>
+    </ul>
+
+    <h3>During Defense</h3>
+    <ul class="compact">
+      <li>☐ Start with problem + lifecycle, then show UI</li>
+      <li>☐ Explain one concrete workflow end-to-end</li>
+      <li>☐ Show migrations + Git PRs when asked</li>
+      <li>☐ Separate implemented vs. measured/tested</li>
+      <li>☐ Say "we haven't measured that" when true</li>
+      <li>☐ Never execute SQL/tests against production</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🚫 What NOT to Do</h2>
+    <ul class="compact">
+      <li><strong>Never show:</strong> .env files, JWT_SECRET, database passwords, connection strings</li>
+      <li><strong>Never claim:</strong> Performance results you didn't measure</li>
+      <li><strong>Never run:</strong> npm test, destructive SQL, or writes against production</li>
+      <li><strong>Never expose:</strong> Production credentials in screen share</li>
+      <li><strong>Don't improvise:</strong> SQL writes to recover a failed demo</li>
+      <li><strong>Don't guess:</strong> If you don't know, say what file you'd check</li>
+    </ul>
+
+    <h2>💡 What-If Scenarios</h2>
+    <ul class="compact">
+      <li><strong>Delete item with stock?</strong> FK RESTRICT rejects it</li>
+      <li><strong>Negative quantity?</strong> CHECK constraint blocks it</li>
+      <li><strong>Fulfill twice?</strong> Procedure locks + checks status='pending'</li>
+      <li><strong>Overfulfill?</strong> Procedure locks warehouse row, checks availability, raises error</li>
+      <li><strong>Edit branch in payload?</strong> API uses JWT branch_id, not payload</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🗂️ Table Groups (11 Total)</h2>
+    <h3>Master Data (5 tables)</h3>
+    <ul class="compact">
+      <li>items, branches, central_warehouse, suppliers, users</li>
+    </ul>
+
+    <h3>Many-to-Many Junction (3 tables)</h3>
+    <ul class="compact">
+      <li><strong>supplier_items:</strong> supplier↔item (cost, lead time, MOQ)</li>
+      <li><strong>branch_stock:</strong> branch↔item (quantity, threshold) - composite PK</li>
+      <li><strong>central_stock:</strong> warehouse↔item (quantity) - composite PK</li>
+    </ul>
+
+    <h3>Operations/History (3 tables)</h3>
+    <ul class="compact">
+      <li><strong>restock_requests:</strong> Pending/fulfilled/rejected requests</li>
+      <li><strong>stock_movements:</strong> Physical stock changes (sale, withdrawal, adjustment)</li>
+      <li><strong>audit_logs:</strong> Before/after JSONB snapshots, timestamps, actors</li>
+    </ul>
+
+    <h2>📈 Benchmark Honest Talk</h2>
+    <p class="compact"><strong>Current state:</strong> EXPLAIN ANALYZE on 2-9 row tables. Planner chose seq scans (cheaper at tiny size). Forced index test confirmed indexes are usable. <strong>Say:</strong> "Indexes prepare for growth; benefit should be re-measured with representative data."</p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🎯 Three Speaking Roles (Assign Names!)</h2>
+  <table>
+    <tr>
+      <th>Role</th>
+      <th>Name</th>
+      <th>Responsibilities</th>
+    </tr>
+    <tr>
+      <td><strong>DBA / Cloud Infrastructure</strong></td>
+      <td>_________________</td>
+      <td>Schema, constraints, Supabase, restricted connection role, backup, deployment config</td>
+    </tr>
+    <tr>
+      <td><strong>Database Programmer / Query Optimization</strong></td>
+      <td>_________________</td>
+      <td>Triggers, stored procedure, transactions, indexes, execution plans, tests</td>
+    </tr>
+    <tr>
+      <td><strong>UI Connector / Git Workflow</strong></td>
+      <td>_________________</td>
+      <td>React client, API calls, auth flow, Vercel projects, PRs, branch protection</td>
+    </tr>
+  </table>
+  <p class="compact" style="margin-top: 6px;"><strong>Note:</strong> Each member should be able to explain the complete request-to-database lifecycle, even if they lead only one section.</p>
+</div>
+
+<div class="highlight-box" style="margin-top: 10px;">
+  <h3>🎓 Final Reminder</h3>
+  <p><strong>Be honest about what you tested and what you didn't.</strong> Say "we haven't measured that under production-scale load" when true. Point to the code/test you would inspect for unknowns. Don't claim measured results you don't have. Explain design rationale in your own words, not memorized scripts. <strong>You built a real system with advanced database features—own it!</strong></p>
+</div>
+
+<p style="text-align: center; margin-top: 12px; font-size: 9px; color: var(--text-secondary);">StockLink Defense Cheat Sheet • IM101 Advanced Database Systems • Generated 2026-10-25</p>
