@@ -71,8 +71,9 @@ export const ClerkDashboard = () => {
   }, []);
 
   // The selected stock row — used to read item_id for the POST body
+  // branch_stock uses a composite PK (branch_id, item_id) — no stock_id column.
   const selectedRow = stockRows.find(
-    (r) => String(r.stock_id) === selectedStockId,
+    (r) => `${r.branch_id}-${r.item_id}` === selectedStockId,
   );
 
   const handleSubmit = async (e) => {
@@ -165,8 +166,9 @@ export const ClerkDashboard = () => {
                     {stockRows.map((row) => {
                       const isBelowThreshold =
                         row.quantity < row.reorder_threshold;
+                      const compositeKey = `${row.branch_id}-${row.item_id}`;
                       return (
-                        <option key={row.stock_id} value={String(row.stock_id)}>
+                        <option key={compositeKey} value={compositeKey}>
                           {row.items?.item_name ?? `Item #${row.item_id}`} (Qty:{" "}
                           {row.quantity}, Threshold: {row.reorder_threshold})
                           {isBelowThreshold ? " ⚠ LOW" : ""}
